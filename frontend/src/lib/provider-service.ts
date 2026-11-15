@@ -74,4 +74,15 @@ export const providerService = {
   }) => api<QuotationRow>(`/requests/${requestId}/quotations`, 'POST', body),
   sendQuotation: (quotationId: number) =>
     api<QuotationRow>(`/quotations/${quotationId}`, 'PATCH', { status: 'SENT' }),
+
+
+    updateQuotation: (id: number, body: {
+    items?: QuotationItem[]
+    valid_until?: string
+    downpayment_amount?: number | null
+    note?: string | null
+  }) => api<QuotationRow>(`/quotations/${id}`, 'PATCH', body),
+
+
+
 }
