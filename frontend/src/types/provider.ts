@@ -119,3 +119,47 @@ export type PaymentRow = {
   note: string | null
   received_at: string
 }
+
+export type JobRow = {
+  id: number
+  request_id: number
+  quotation_id: number
+  provider_id: number
+  assigned_user_id: number | null
+  schedule_date: string | null
+  schedule_time: string | null
+  schedule_status: 'NOT_PROPOSED' | 'PENDING' | 'CONFIRMED'
+  status: 'JOB_CREATED' | 'SCHEDULE_PROPOSED' | 'SCHEDULE_CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+  cancellation_reason?: string | null
+  cancelled_at?: string | null
+  cancelled_by?: number | null
+  completed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type JobDetailRow = JobRow & {
+  records: {
+    id: number
+    job_id: number
+    record_type: string
+    note: string | null
+    material_name: string | null
+    quantity: string | null
+    unit: string | null
+    file_name: string | null
+    content_type: string | null
+    created_at: string
+  }[]
+}
+
+export type EmployeeRow = {
+  id: number
+  provider_id: number
+  name: string
+  email: string
+  phone: string
+  role: string
+  status: string
+  must_change_password: boolean
+}

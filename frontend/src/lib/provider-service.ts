@@ -4,14 +4,15 @@ import type {
   ServiceArea, WorkingHour,
   RequestRow, RequestMessage, QuotationItem, QuotationRow,
   InvoiceRow, PaymentRow,
+  JobRow, JobDetailRow, EmployeeRow,
 } from '../types/provider'
 
-type Wrapped<T> = { [K in keyof T]: T[K] }
-
 export const providerService = {
+  // ---- Provider profile ----
   getProfile: () => api<Provider>('/providers/me'),
   updateProfile: (body: Partial<Provider>) => api<Provider>('/providers/me', 'PATCH', body),
 
+  // ---- Offerings ----
   listCatalogServices: () => api<CatalogService[]>('/services'),
   listMyOfferings: () => api<ProviderOffering[]>('/provider/me/services'),
   createOffering: (body: { service_id: number; starting_price: number; description?: string }) =>
@@ -19,6 +20,7 @@ export const providerService = {
   updateOffering: (id: number, body: { starting_price?: number; description?: string; is_active?: boolean }) =>
     api<ProviderOffering>(`/provider/me/services/${id}`, 'PATCH', body),
 
+  // ---- Service areas ----
   listServiceAreas: async (): Promise<ServiceArea[]> => {
     const r = await api<{ service_areas: ServiceArea[] }>('/providers/me/service-areas')
     return r.service_areas
@@ -28,6 +30,7 @@ export const providerService = {
   deleteServiceArea: (id: number) =>
     api<void>(`/providers/me/service-areas/${id}`, 'DELETE'),
 
+  // ---- Working hours ----
   getWorkingHours: async (): Promise<WorkingHour[]> => {
     const r = await api<{ working_hours: WorkingHour[] }>('/providers/me/working-hours')
     return r.working_hours
@@ -39,6 +42,7 @@ export const providerService = {
     return r.working_hours
   },
 
+  // ---- Policies ----
   uploadPolicy: (form: FormData) => apiUpload('/policies/upload', form),
   listMyPolicies: () => api<PolicyRow[]>('/policies/me'),
   deletePolicy: (id: number) => api<void>(`/policies/${id}`, 'DELETE'),
@@ -73,18 +77,33 @@ export const providerService = {
     downpayment_amount?: number
     note?: string
   }) => api<QuotationRow>(`/requests/${requestId}/quotations`, 'POST', body),
-  sendQuotation: (quotationId: number) =>
-    api<QuotationRow>(`/quotations/${quotationId}`, 'PATCH', { status: 'SENT' }),
-
-
-    updateQuotation: (id: number, body: {
+  updateQuotation: (id: number, body: {
     items?: QuotationItem[]
     valid_until?: string
     downpayment_amount?: number | null
     note?: string | null
   }) => api<QuotationRow>(`/quotations/${id}`, 'PATCH', body),
+  sendQuotation: (quotationId: number) =>
+    api<QuotationRow>(`/quotations/${quotationId}`, 'PATCH', { status: 'SENT' }),
 
-    // ---- Invoices ----
+  // ---- Jobs ----
+  listJobs: (params?: { status?: string; schedule_status?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.status) sp.set('status', params.status)
+    if (params?.schedule_status) sp.set('schedule_status', params.schedule_status)
+    const qs = sp.toString() ? `?${sp.toString()}` : ''
+    return api<{ items: JobRow[]; total: number; limit: number; offset: number }>(`/jobs${qs}`)
+  },
+  getJob: (id: number) => api<JobDetailRow>(`/jobs/${id}`),
+  assignEmployee: (jobId: number, employeeId: number) =>
+    api<JobRow>(`/jobs/${jobId}/assign`, 'POST', { employee_id: employeeId }),
+  proposeSchedule: (jobId: number, schedule_date: string, schedule_time: string) =>
+    api<JobRow>(`/jobs/${jobId}/schedule`, 'POST', { schedule_date, schedule_time }),
+
+  // ---- Employees ----
+  listEmployees: () => api<EmployeeRow[]>('/company/employees'),
+
+  // ---- Invoices ----
   listInvoices: () =>
     api<{ items: InvoiceRow[]; total: number; limit: number; offset: number }>('/invoices'),
   getInvoice: (id: number) => api<InvoiceRow>(`/invoices/${id}`),
@@ -107,5 +126,4 @@ export const providerService = {
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     URL.revokeObjectURL(url)
   },
-
 }

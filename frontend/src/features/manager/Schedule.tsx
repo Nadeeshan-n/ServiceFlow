@@ -1,136 +1,174 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ActionButton, StatusBadge, SurfaceCard, EmptyState } from "../../components";
-import { mockJobs, type Job, type JobState } from "../../mocks/data";
+import { useState, type FormEvent } from 'react'
+import {
+  ActionButton, EmptyState, Modal, SelectField, SurfaceCard,
+  Tabs, TextField,
+} from '../../components'
+import { Notice, PageHeader, RecordStatus, Resource, useResource } from '../../components/client-shared'
+import { providerService } from '../../lib/provider-service'
+import type { EmployeeRow, JobRow } from '../../types/provider'
 
-const jobStatus = (s: JobState): "awaiting" | "scheduled" | "in_progress" | "completed" => {
-  if (s === "JOB_CREATED") return "awaiting";
-  if (s === "SCHEDULE_PROPOSED") return "awaiting";
-  if (s === "SCHEDULE_CONFIRMED") return "scheduled";
-  if (s === "IN_PROGRESS") return "in_progress";
-  return "completed";
-};
+const tabs = [
+  { key: 'needs', label: 'Needs scheduling' },
+  { key: 'pending', label: 'Awaiting client' },
+  { key: 'confirmed', label: 'Confirmed' },
+] as const
+type Tab = typeof tabs[number]['key']
 
-const formatTime = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
-
-const formatDayHeading = (dateKey: string) => {
-  const d = new Date(dateKey);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateKey);
-  target.setHours(0, 0, 0, 0);
-  const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
-  const dayLabel = d.toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-  if (diff === 0) return `Today · ${dayLabel}`;
-  if (diff === 1) return `Tomorrow · ${dayLabel}`;
-  if (diff === -1) return `Yesterday · ${dayLabel}`;
-  if (diff < 0) return `${dayLabel} (past)`;
-  return dayLabel;
-};
+const scheduleStatusMap: Record<Tab, string> = {
+  needs: 'NOT_PROPOSED',
+  pending: 'PENDING',
+  confirmed: 'CONFIRMED',
+}
 
 export default function ManagerSchedule() {
-  const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "upcoming" | "past">("upcoming");
+  const [tab, setTab] = useState<Tab>('needs')
+  const jobs = useResource(
+    () => providerService.listJobs({ schedule_status: scheduleStatusMap[tab] }),
+    [tab],
+  )
+  const employees = useResource((): Promise<EmployeeRow[]> =>
+    providerService.listEmployees().catch(() => [] as EmployeeRow[]),
+  )
+  const [openJobId, setOpenJobId] = useState<number | null>(null)
 
-  const now = new Date();
-  const withSchedule = mockJobs.filter((job) => job.startTime);
-  const filtered = withSchedule.filter((job) => {
-    if (filter === "all") return true;
-    const time = new Date(job.startTime!).getTime();
-    if (filter === "upcoming") return time >= now.getTime();
-    return time < now.getTime();
-  });
+  return <>
+    <PageHeader title="Schedule" description="Propose appointment times and assign employees." />
+    <Tabs label="Schedule views" items={tabs} value={tab} onChange={setTab}>
+      <Resource {...jobs} retry={jobs.reload}>
+        {jobs.data && (jobs.data.items.length === 0
+          ? <EmptyState
+              title="Nothing here"
+              description={
+                tab === 'needs' ? 'All jobs are scheduled.' :
+                tab === 'pending' ? 'No schedules waiting for the client.' :
+                'No confirmed appointments yet.'
+              }
+            />
+          : <div className="space-y-3">{jobs.data.items.map((j: JobRow) => (
+              <SurfaceCard key={j.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="sf-mono text-xs text-text-secondary">Job #{j.id}</span>
+                    <RecordStatus status={j.status} />
+                  </div>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    Request #{j.request_id}
+                    {j.schedule_date && ` · ${j.schedule_date} ${j.schedule_time?.slice(0, 5) ?? ''}`}
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    {j.assigned_user_id ? `Assigned to employee #${j.assigned_user_id}` : 'Not assigned'}
+                  </p>
+                </div>
+                <ActionButton variant="stub" size="small" onClick={() => setOpenJobId(j.id)}>Manage</ActionButton>
+              </SurfaceCard>
+            ))}</div>
+        )}
+      </Resource>
+    </Tabs>
+    <Modal open={openJobId !== null} title={`Job #${openJobId ?? ''}`} onClose={() => setOpenJobId(null)}>
+      {openJobId !== null && <JobScheduler
+        jobId={openJobId}
+        employees={employees.data ?? []}
+        onChanged={() => { jobs.reload(); employees.reload() }}
+        onClose={() => setOpenJobId(null)}
+      />}
+    </Modal>
+  </>
+}
 
-  const sorted = [...filtered].sort(
-    (a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime(),
-  );
+function JobScheduler({ jobId, employees, onChanged, onClose }: {
+  jobId: number
+  employees: EmployeeRow[]
+  onChanged: () => void
+  onClose: () => void
+}) {
+  const job = useResource(() => providerService.getJob(jobId), [jobId])
+  const [pending, setPending] = useState<'assign' | 'schedule' | null>(null)
+  const [error, setError] = useState('')
+  const [employeeId, setEmployeeId] = useState('')
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('09:00')
 
-  const groups: Record<string, Job[]> = {};
-  sorted.forEach((job) => {
-    const key = new Date(job.startTime!).toISOString().slice(0, 10);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(job);
-  });
+  async function assign() {
+    if (!employeeId) return
+    setPending('assign'); setError('')
+    try {
+      await providerService.assignEmployee(jobId, Number(employeeId))
+      setEmployeeId(''); job.reload(); onChanged()
+    } catch (c) { setError((c as Error).message) } finally { setPending(null) }
+  }
 
-  const groupKeys = Object.keys(groups);
+  async function propose(e: FormEvent) {
+    e.preventDefault()
+    if (!date || !time) return
+    setPending('schedule'); setError('')
+    try {
+      await providerService.proposeSchedule(jobId, date, `${time}:00`)
+      job.reload(); onChanged()
+    } catch (c) { setError((c as Error).message) } finally { setPending(null) }
+  }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="sf-display text-2xl font-bold">Schedule</h1>
-
-        <div className="flex gap-1 border border-line rounded-docket p-1">
-          {(["upcoming", "past", "all"] as const).map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setFilter(option)}
-              className={`px-3 py-1.5 text-sm rounded-docket capitalize ${
-                filter === option ? "bg-graphite text-white" : "hover:bg-paper"
-              }`}
-            >
-              {option}
-            </button>
-          ))}
+  return <Resource {...job} retry={job.reload}>
+    {job.data && <>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <RecordStatus status={job.data.status} />
+          <span className="sf-mono text-xs text-text-secondary">Schedule: {job.data.schedule_status}</span>
         </div>
+        {job.data.schedule_date && (
+          <p className="text-sm">
+            Proposed: <strong>{job.data.schedule_date} at {job.data.schedule_time?.slice(0, 5)}</strong>
+          </p>
+        )}
+        <p className="text-sm text-text-secondary">
+          {job.data.assigned_user_id ? `Assigned to employee #${job.data.assigned_user_id}` : 'No employee assigned'}
+        </p>
       </div>
 
-      {groupKeys.length === 0 ? (
-        <EmptyState
-          title={`No ${filter} appointments`}
-          description="Scheduled jobs appear here grouped by day."
-        />
-      ) : (
-        <div className="space-y-6">
-          {groupKeys.map((dateKey) => (
-            <div key={dateKey} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <h2 className="sf-display font-semibold text-lg">{formatDayHeading(dateKey)}</h2>
-                <span className="sf-mono text-xs text-text-secondary">
-                  {groups[dateKey].length} job{groups[dateKey].length === 1 ? "" : "s"}
-                </span>
-              </div>
+      {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
 
-              <div className="space-y-2">
-                {groups[dateKey].map((job) => (
-                  <SurfaceCard key={job.id} className="p-4 flex flex-wrap items-center gap-3">
-                    <div className="sf-mono text-sm font-semibold min-w-16">
-                      {formatTime(job.startTime)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold">{job.serviceName}</p>
-                      <p className="text-sm text-text-secondary">
-                        {job.clientName}
-                        {job.employeeName && ` · ${job.employeeName}`}
-                      </p>
-                    </div>
-                    <StatusBadge status={jobStatus(job.state)} />
-                    <ActionButton
-                      variant="stub"
-                      size="small"
-                      onClick={() => navigate("/manager/jobs")}
-                    >
-                      Open
-                    </ActionButton>
-                  </SurfaceCard>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+      {employees.length > 0 && !job.data.assigned_user_id && job.data.status === 'JOB_CREATED' && (
+        <SurfaceCard className="mt-4 space-y-3 p-4">
+          <h3 className="font-semibold">Assign employee</h3>
+          <SelectField label="Employee" value={employeeId} onChange={e => setEmployeeId(e.target.value)}>
+            <option value="">— Select —</option>
+            {employees.filter(e => e.status === 'ACTIVE').map(e => (
+              <option key={e.id} value={e.id}>{e.name}</option>
+            ))}
+          </SelectField>
+          <div className="flex justify-end">
+            <ActionButton variant="stamp" onClick={assign} disabled={!employeeId || pending === 'assign'}>
+              {pending === 'assign' ? 'Assigning…' : 'Assign'}
+            </ActionButton>
+          </div>
+        </SurfaceCard>
       )}
-    </div>
-  );
+
+      {job.data.schedule_status === 'NOT_PROPOSED' && job.data.status === 'JOB_CREATED' && (
+        <SurfaceCard className="mt-4 space-y-3 p-4">
+          <h3 className="font-semibold">Propose schedule</h3>
+          <form onSubmit={propose} className="space-y-3">
+            <TextField label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            <TextField label="Time" type="time" value={time} onChange={e => setTime(e.target.value)} required />
+            <div className="flex justify-end">
+              <ActionButton type="submit" variant="stamp" disabled={!date || !time || pending === 'schedule'}>
+                {pending === 'schedule' ? 'Proposing…' : 'Propose schedule'}
+              </ActionButton>
+            </div>
+          </form>
+        </SurfaceCard>
+      )}
+
+      {job.data.schedule_status === 'PENDING' && (
+        <div className="mt-4"><Notice>Schedule proposed — waiting for the client to approve.</Notice></div>
+      )}
+      {job.data.schedule_status === 'CONFIRMED' && (
+        <div className="mt-4"><Notice>Schedule confirmed. The employee can start the job on the scheduled date.</Notice></div>
+      )}
+
+      <div className="mt-5 flex justify-end">
+        <ActionButton onClick={onClose}>Close</ActionButton>
+      </div>
+    </>}
+  </Resource>
 }

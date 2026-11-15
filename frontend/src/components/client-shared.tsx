@@ -24,21 +24,70 @@ export function PageHeader({ eyebrow, title, description, children }: { eyebrow?
   return <header className="mb-7 flex flex-wrap items-end justify-between gap-5"><div>{eyebrow && <p className="sf-mono mb-2 text-xs text-text-secondary">{eyebrow}</p>}<h1 className="sf-display text-3xl font-bold md:text-4xl">{title}</h1>{description && <p className="mt-3 max-w-2xl text-text-secondary">{description}</p>}</div>{children}</header>
 }
 const statusMap: Record<string, WorkflowStatus> = {
-  NEW: 'awaiting', QUOTED: 'awaiting', CONVERTED: 'approved', DRAFT: 'awaiting', SENT: 'awaiting',
-  APPROVED: 'approved', DECLINED: 'declined', REJECTED: 'declined', CANCELLED: 'cancelled',
-  JOB_CREATED: 'awaiting', SCHEDULE_PROPOSED: 'awaiting', SCHEDULE_CONFIRMED: 'scheduled',
-  IN_PROGRESS: 'in_progress', COMPLETED: 'completed', UNPAID: 'unpaid', PAID: 'paid',
-  UNDER_REVIEW: 'awaiting', NEED_INFORMATION: 'awaiting', QUOTATION_SENT: 'scheduled',
+  // Request statuses
+  NEW: 'awaiting',
+  UNDER_REVIEW: 'awaiting',
+  NEED_INFORMATION: 'awaiting',
+  QUOTATION_SENT: 'scheduled',
+  // Quotation statuses
+  DRAFT: 'awaiting',
+  SENT: 'awaiting',
+  APPROVED: 'approved',
+  DECLINED: 'declined',
+  EXPIRED: 'cancelled',
+  // Request / Quotation legacy (client side)
+  QUOTED: 'awaiting',
+  CONVERTED: 'approved',
+  // Job statuses
+  JOB_CREATED: 'awaiting',
+  SCHEDULE_PROPOSED: 'awaiting',
+  SCHEDULE_CONFIRMED: 'scheduled',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  // Schedule statuses
+  NOT_PROPOSED: 'awaiting',
+  PENDING: 'awaiting',
+  CONFIRMED: 'approved',
+  // Invoice statuses
+  UNPAID: 'unpaid',
   PARTIALLY_PAID: 'awaiting',
+  PAID: 'paid',
+  // Shared
+  REJECTED: 'declined',
+  CANCELLED: 'cancelled',
 }
 const statusLabels: Record<string, string> = {
-  NEW: 'Request sent', QUOTED: 'Quotation ready', CONVERTED: 'Job created', DRAFT: 'Draft',
-  SENT: 'Awaiting your approval', APPROVED: 'Approved', DECLINED: 'Declined', REJECTED: 'Rejected',
-  CANCELLED: 'Cancelled', JOB_CREATED: 'Job created', SCHEDULE_PROPOSED: 'Appointment proposed',
-  SCHEDULE_CONFIRMED: 'Appointment confirmed', IN_PROGRESS: 'Work in progress', COMPLETED: 'Completed',
-  UNPAID: 'Unpaid', PAID: 'Paid',
-  UNDER_REVIEW: 'Under review', NEED_INFORMATION: 'Needs information', QUOTATION_SENT: 'Quotation sent',
+  // Request statuses
+  NEW: 'New',
+  UNDER_REVIEW: 'Under review',
+  NEED_INFORMATION: 'Needs information',
+  QUOTATION_SENT: 'Quotation sent',
+  // Quotation statuses
+  DRAFT: 'Draft',
+  SENT: 'Sent',
+  APPROVED: 'Approved',
+  DECLINED: 'Declined',
+  EXPIRED: 'Expired',
+  // Request / Quotation legacy
+  QUOTED: 'Quotation ready',
+  CONVERTED: 'Job created',
+  // Job statuses
+  JOB_CREATED: 'Job created',
+  SCHEDULE_PROPOSED: 'Appointment proposed',
+  SCHEDULE_CONFIRMED: 'Appointment confirmed',
+  IN_PROGRESS: 'Work in progress',
+  COMPLETED: 'Completed',
+  // Schedule statuses
+  NOT_PROPOSED: 'Not scheduled',
+  PENDING: 'Awaiting approval',
+  CONFIRMED: 'Confirmed',
+  // Invoice statuses
+  UNPAID: 'Unpaid',
   PARTIALLY_PAID: 'Partially paid',
+  PAID: 'Paid',
+  // Shared
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
 }
 export const statusLabel = (status: string) => statusLabels[status] || status.toLowerCase().replaceAll('_', ' ')
 export function RecordStatus({ status }: { status: string }) { return <StatusBadge status={statusMap[status] || 'awaiting'} label={statusLabel(status)} /> }

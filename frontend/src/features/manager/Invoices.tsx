@@ -1,195 +1,244 @@
-import { useState, type FormEvent } from 'react'
+// src/features/manager/Invoices.tsx
+import { useState } from "react";
 import {
-  ActionButton, EmptyState, Modal, SelectField, SurfaceCard, TextAreaField, TextField,
-} from '../../components'
-import { Notice, PageHeader, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
-import { providerService } from '../../lib/provider-service'
-import type { InvoiceRow, PaymentRow } from '../../types/provider'
+  ActionButton,
+  StatusBadge,
+  ResponsiveTable,
+  Modal,
+  SelectField,
+  EmptyState,
+} from "../../components";
+import { mockInvoices, type Invoice } from "../../mocks/data";
+
+const invoiceStatus = (s: "UNPAID" | "PAID"): "unpaid" | "paid" =>
+  s === "PAID" ? "paid" : "unpaid";
+
+const formatDateTime = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
 export default function Invoices() {
-  const invoices = useResource(() => providerService.listInvoices())
-  const [openId, setOpenId] = useState<number | null>(null)
+  const [invoices, setInvoices] = useState<Invoice[]>(mockInvoices);
+  const [paying, setPaying] = useState<Invoice | null>(null);
+  const [method, setMethod] = useState("Cash");
 
-  const list = invoices.data?.items ?? []
-  const unpaid = list.filter(i => i.payment_status !== 'PAID')
-  const paid = list.filter(i => i.payment_status === 'PAID')
-  const outstanding = unpaid.reduce((s, i) => s + Number(i.total_amount) - Number(i.paid_amount), 0)
-  const collected = paid.reduce((s, i) => s + Number(i.paid_amount), 0)
-  const billed = list.reduce((s, i) => s + Number(i.total_amount), 0)
+  // ---- Computed totals ----
+  const unpaidInvoices = invoices.filter((i) => i.state === "UNPAID");
+  const paidInvoices = invoices.filter((i) => i.state === "PAID");
 
-  return <>
-    <PageHeader title="Invoices" description="Billing records created automatically when a job is completed." />
+  const unpaidTotal = unpaidInvoices.reduce((s, i) => s + i.total, 0);
+  const paidTotal = paidInvoices.reduce((s, i) => s + i.total, 0);
+  const totalBilled = unpaidTotal + paidTotal;
 
-    <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <SurfaceCard className="p-4">
-        <p className="sf-mono text-xs text-text-secondary">OUTSTANDING</p>
-        <p className="sf-tabular mt-1 text-2xl font-semibold">LKR {outstanding.toFixed(2)}</p>
-        <p className="mt-1 text-xs text-text-secondary">{unpaid.length} open</p>
-      </SurfaceCard>
-      <SurfaceCard className="p-4">
-        <p className="sf-mono text-xs text-text-secondary">COLLECTED</p>
-        <p className="sf-tabular mt-1 text-2xl font-semibold">LKR {collected.toFixed(2)}</p>
-        <p className="mt-1 text-xs text-text-secondary">{paid.length} paid</p>
-      </SurfaceCard>
-      <SurfaceCard className="p-4">
-        <p className="sf-mono text-xs text-text-secondary">TOTAL BILLED</p>
-        <p className="sf-tabular mt-1 text-2xl font-semibold">LKR {billed.toFixed(2)}</p>
-        <p className="mt-1 text-xs text-text-secondary">{list.length} invoice{list.length === 1 ? '' : 's'}</p>
-      </SurfaceCard>
-    </div>
+  const unpaidCount = unpaidInvoices.length;
+  const paidCount = paidInvoices.length;
 
-    <Resource {...invoices} retry={invoices.reload}>
-      {list.length === 0
-        ? <EmptyState title="No invoices" description="Invoices are created automatically when a job is completed." />
-        : <div className="space-y-2">{list.map(inv => (
-            <SurfaceCard key={inv.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="sf-mono text-sm font-semibold">{inv.invoice_number}</span>
-                  <RecordStatus status={inv.payment_status} />
-                </div>
-                <p className="mt-1 text-xs text-text-secondary">Issued {dateTime(inv.issued_at)}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="sf-tabular font-semibold">LKR {Number(inv.total_amount).toFixed(2)}</p>
-                  {inv.payment_status !== 'PAID' && (
-                    <p className="text-xs text-text-secondary">
-                      Due LKR {(Number(inv.total_amount) - Number(inv.paid_amount)).toFixed(2)}
-                    </p>
-                  )}
-                </div>
-                <ActionButton variant="stub" size="small" onClick={() => setOpenId(inv.id)}>Open</ActionButton>
-              </div>
-            </SurfaceCard>
-          ))}</div>}
-    </Resource>
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const paidTodayInvoices = paidInvoices.filter(
+    (i) => i.paidAt?.slice(0, 10) === todayISO
+  );
+  const paidToday = paidTodayInvoices.reduce((s, i) => s + i.total, 0);
+  const paidTodayCount = paidTodayInvoices.length;
 
-    <Modal open={openId !== null} title="Invoice details" onClose={() => setOpenId(null)}>
-      {openId !== null && <InvoiceDetail id={openId} onChanged={invoices.reload} />}
-    </Modal>
-  </>
-}
+  // ---- Action ----
+  const recordPayment = () => {
+    if (!paying) return;
+    setInvoices(
+      invoices.map((i) =>
+        i.id === paying.id
+          ? {
+              ...i,
+              state: "PAID",
+              paymentMethod: method,
+              paidAt: new Date().toISOString(),
+            }
+          : i
+      )
+    );
+    setPaying(null);
+    setMethod("Cash");
+  };
 
-function InvoiceDetail({ id, onChanged }: { id: number; onChanged: () => void }) {
-  const inv = useResource(() => providerService.getInvoice(id), [id])
-  const payments = useResource(() => providerService.listPayments(id), [id])
-  const [recording, setRecording] = useState(false)
-  const [downloading, setDownloading] = useState(false)
-  const [error, setError] = useState('')
+  return (
+    <div className="space-y-6">
+      <h1 className="sf-display text-2xl font-bold">Invoices</h1>
 
-  async function download() {
-    setDownloading(true); setError('')
-    try { await providerService.downloadInvoicePdf(id) }
-    catch (e) { setError((e as Error).message) } finally { setDownloading(false) }
-  }
-
-  return <Resource {...inv} retry={inv.reload}>
-    {inv.data && <>
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="sf-mono text-lg font-semibold">{inv.data.invoice_number}</span>
-          <RecordStatus status={inv.data.payment_status} />
+      {/* Summary strip — 4 cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="sf-card p-4 min-w-0 flex flex-col">
+          <p className="sf-mono text-[11px] uppercase tracking-wide text-text-secondary">
+            Unpaid total
+          </p>
+          <p className="sf-tabular font-semibold text-lg leading-tight mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+            LKR {unpaidTotal.toFixed(2)}
+          </p>
+          <p className="text-xs text-text-secondary mt-1">
+            {unpaidCount} invoice{unpaidCount === 1 ? "" : "s"}
+          </p>
         </div>
-        <div className="grid grid-cols-2 gap-3 border-t border-line pt-3 text-sm">
-          <div><span className="text-text-secondary">Issued:</span> {dateTime(inv.data.issued_at)}</div>
-          {inv.data.paid_at && <div><span className="text-text-secondary">Paid:</span> {dateTime(inv.data.paid_at)}</div>}
-          <div><span className="text-text-secondary">Total:</span> <strong className="sf-tabular">LKR {Number(inv.data.total_amount).toFixed(2)}</strong></div>
-          <div><span className="text-text-secondary">Downpayment:</span> LKR {Number(inv.data.downpayment_amount).toFixed(2)}</div>
-          <div className="col-span-2"><span className="text-text-secondary">Paid so far:</span> <strong className="sf-tabular">LKR {Number(inv.data.paid_amount).toFixed(2)}</strong></div>
-          {inv.data.payment_status !== 'PAID' && (
-            <div className="col-span-2"><span className="text-text-secondary">Outstanding:</span> <strong className="sf-tabular text-[var(--sf-warning)]">LKR {(Number(inv.data.total_amount) - Number(inv.data.paid_amount)).toFixed(2)}</strong></div>
-          )}
+
+        <div className="sf-card p-4 min-w-0 flex flex-col">
+          <p className="sf-mono text-[11px] uppercase tracking-wide text-text-secondary">
+            Paid total
+          </p>
+          <p className="sf-tabular font-semibold text-lg leading-tight mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+            LKR {paidTotal.toFixed(2)}
+          </p>
+          <p className="text-xs text-text-secondary mt-1">
+            {paidCount} invoice{paidCount === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        <div className="sf-card p-4 min-w-0 flex flex-col">
+          <p className="sf-mono text-[11px] uppercase tracking-wide text-text-secondary">
+            Total billed
+          </p>
+          <p className="sf-tabular font-semibold text-lg leading-tight mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+            LKR {totalBilled.toFixed(2)}
+          </p>
+          <p className="text-xs text-text-secondary mt-1">
+            {invoices.length} invoice{invoices.length === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        <div className="sf-card p-4 min-w-0 flex flex-col">
+          <p className="sf-mono text-[11px] uppercase tracking-wide text-text-secondary">
+            Collected today
+          </p>
+          <p className="sf-tabular font-semibold text-lg leading-tight mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+            LKR {paidToday.toFixed(2)}
+          </p>
+          <p className="text-xs text-text-secondary mt-1">
+            {paidTodayCount} invoice{paidTodayCount === 1 ? "" : "s"}
+          </p>
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
-        {inv.data.payment_status !== 'PAID' && (
-          <ActionButton variant="stamp" onClick={() => setRecording(true)}>Record payment</ActionButton>
-        )}
-        <ActionButton onClick={download} disabled={downloading}>
-          {downloading ? 'Downloading…' : 'Download PDF'}
-        </ActionButton>
-      </div>
-      {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
-
-      <div className="mt-6 border-t border-line pt-4">
-        <h3 className="mb-3 font-semibold">Payment history</h3>
-        <Resource {...payments} retry={payments.reload}>
-          {payments.data && payments.data.length === 0
-            ? <p className="text-sm text-text-secondary">No payments recorded yet.</p>
-            : <div className="space-y-2">{payments.data?.map((p: PaymentRow) => (
-                <div key={p.id} className="rounded-docket border border-line bg-paper p-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="font-semibold">LKR {Number(p.amount).toFixed(2)}</span>
-                    <span className="text-xs text-text-secondary">{dateTime(p.received_at)}</span>
+      {/* Invoice table */}
+      <ResponsiveTable
+        caption="Invoices"
+        rows={invoices}
+        columns={[
+          {
+            key: "number",
+            heading: "Invoice #",
+            render: (i) => (
+              <span className="sf-mono text-xs">{i.invoiceNumber}</span>
+            ),
+          },
+          {
+            key: "client",
+            heading: "Client",
+            render: (i) => (
+              <div>
+                <div className="font-semibold">{i.clientName}</div>
+                <div className="text-xs text-text-secondary">{i.serviceName}</div>
+              </div>
+            ),
+          },
+          {
+            key: "total",
+            heading: "Total (LKR)",
+            render: (i) => (
+              <span className="sf-tabular font-semibold">
+                {i.total.toFixed(2)}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            heading: "Status",
+            render: (i) => <StatusBadge status={invoiceStatus(i.state)} />,
+          },
+          {
+            key: "paid",
+            heading: "Payment",
+            render: (i) =>
+              i.state === "PAID" ? (
+                <div className="text-xs">
+                  <div className="font-semibold">{i.paymentMethod}</div>
+                  <div className="text-text-secondary">
+                    {formatDateTime(i.paidAt)}
                   </div>
-                  <div className="mt-1 text-xs text-text-secondary">
-                    {p.method.replaceAll('_', ' ')}
-                    {p.reference && ` · Ref: ${p.reference}`}
-                  </div>
-                  {p.note && <p className="mt-1 text-xs">{p.note}</p>}
                 </div>
-              ))}</div>}
-        </Resource>
-      </div>
+              ) : null,
+          },
+          {
+            key: "actions",
+            heading: "",
+            render: (i) =>
+              i.state === "UNPAID" ? (
+                <ActionButton
+                  variant="stamp"
+                  size="small"
+                  onClick={() => {
+                    setPaying(i);
+                    setMethod("Cash");
+                  }}
+                >
+                  Record payment
+                </ActionButton>
+              ) : null,
+          },
+        ]}
+        empty={
+          <EmptyState
+            title="No invoices yet"
+            description="Completed jobs create invoices here."
+          />
+        }
+      />
 
-      <Modal open={recording} title="Record payment" onClose={() => setRecording(false)}>
-        {recording && <RecordPayment
-          invoice={inv.data}
-          onDone={() => { setRecording(false); inv.reload(); payments.reload(); onChanged() }}
-          onCancel={() => setRecording(false)}
-        />}
+      {/* Record payment modal */}
+      <Modal
+        open={!!paying}
+        title="Record payment"
+        description={
+          paying
+            ? `${paying.invoiceNumber} — ${paying.clientName} — LKR ${paying.total.toFixed(2)}`
+            : ""
+        }
+        onClose={() => setPaying(null)}
+      >
+        <div className="space-y-4">
+          <div className="rounded-docket border border-line bg-paper p-3 text-sm space-y-1">
+            <p className="text-text-secondary text-xs">Amount to record</p>
+            <p className="sf-tabular font-semibold text-lg">
+              LKR {paying?.total.toFixed(2)}
+            </p>
+            <p className="text-xs text-text-secondary mt-1">
+              Full payment only — no partial payments in this release.
+            </p>
+          </div>
+
+          <SelectField
+            label="Payment method"
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            required
+          >
+            <option value="Cash">Cash</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Cheque">Cheque</option>
+          </SelectField>
+
+          <div className="flex justify-end gap-2">
+            <ActionButton variant="stub" onClick={() => setPaying(null)}>
+              Cancel
+            </ActionButton>
+            <ActionButton variant="stamp" onClick={recordPayment}>
+              Confirm payment
+            </ActionButton>
+          </div>
+        </div>
       </Modal>
-    </>}
-  </Resource>
-}
-
-function RecordPayment({ invoice, onDone, onCancel }: {
-  invoice: InvoiceRow
-  onDone: () => void
-  onCancel: () => void
-}) {
-  const outstanding = Number(invoice.total_amount) - Number(invoice.paid_amount)
-  const [amount, setAmount] = useState(outstanding.toFixed(2))
-  const [method, setMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'CARD_EXTERNAL' | 'OTHER'>('CASH')
-  const [reference, setReference] = useState('')
-  const [note, setNote] = useState('')
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState('')
-
-  async function submit(e: FormEvent) {
-    e.preventDefault(); if (pending) return
-    const num = Number(amount)
-    if (!num || num <= 0) { setError('Amount must be greater than 0.'); return }
-    if (num > outstanding + 0.001) { setError(`Amount cannot exceed outstanding LKR ${outstanding.toFixed(2)}.`); return }
-    setPending(true); setError('')
-    try {
-      await providerService.recordPayment(invoice.id, {
-        amount: num,
-        method,
-        reference: reference.trim() || undefined,
-        note: note.trim() || undefined,
-      })
-      onDone()
-    } catch (c) { setError((c as Error).message) } finally { setPending(false) }
-  }
-
-  return <form onSubmit={submit} className="space-y-4">
-    <Notice>Outstanding balance: LKR {outstanding.toFixed(2)}</Notice>
-    <TextField label="Amount (LKR)" type="number" min={0.01} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
-    <SelectField label="Method" value={method} onChange={e => setMethod(e.target.value as typeof method)}>
-      <option value="CASH">Cash</option>
-      <option value="BANK_TRANSFER">Bank transfer</option>
-      <option value="CARD_EXTERNAL">Card (external)</option>
-      <option value="OTHER">Other</option>
-    </SelectField>
-    <TextField label="Reference (optional)" value={reference} onChange={e => setReference(e.target.value)} maxLength={120} />
-    <TextAreaField label="Note (optional)" value={note} onChange={e => setNote(e.target.value)} maxLength={2000} />
-    {error && <Notice error>{error}</Notice>}
-    <div className="flex justify-end gap-2">
-      <ActionButton type="button" onClick={onCancel}>Cancel</ActionButton>
-      <ActionButton type="submit" variant="stamp" disabled={pending}>{pending ? 'Saving…' : 'Record payment'}</ActionButton>
     </div>
-  </form>
+  );
 }
