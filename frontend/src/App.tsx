@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useSession } from "./app/session";
+import MyBusiness from "./features/manager/MyBusiness";
 
 import {
   BrowserRouter,
@@ -148,6 +149,7 @@ export default function App() {
         <Route path="/manager/jobs" element={<RoleGuard role="manager"><Shell role="manager"><ManagerJobs /></Shell></RoleGuard>} />
         <Route path="/manager/schedule" element={<RoleGuard role="manager"><Shell role="manager"><ManagerSchedule /></Shell></RoleGuard>} />
         <Route path="/manager/invoices" element={<RoleGuard role="manager"><Shell role="manager"><Invoices /></Shell></RoleGuard>} />
+        <Route path="/manager/business" element={<RoleGuard role="manager"><Shell role="manager"><MyBusiness /></Shell></RoleGuard>} />
         <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><PolicyPage /></Shell></RoleGuard>} />
         <Route path="/manager/company" element={<RoleGuard role="manager"><Shell role="manager"><CompanyProfilePage /></Shell></RoleGuard>} />
         <Route path="/manager/team" element={<RoleGuard role="manager"><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />

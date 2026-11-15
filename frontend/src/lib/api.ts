@@ -43,3 +43,26 @@ export async function api<T>(path: string, method = 'GET', body?: unknown): Prom
   }
   return data as T
 }
+
+
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  let response: Response
+  try {
+    response = await fetch(baseUrl + path, {
+      method: 'POST',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      body: form,
+      signal: AbortSignal.timeout(60000),
+    })
+  } catch {
+    throw new ApiError('Cannot reach ServiceFlow. Check your connection and try again.', 0)
+  }
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new ApiError(
+      data?.message || (typeof data?.detail === 'string' ? data.detail : 'Upload failed'),
+      response.status,
+    )
+  }
+  return data as T
+}
