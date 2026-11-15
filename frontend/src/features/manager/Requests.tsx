@@ -5,7 +5,7 @@ import {
 } from '../../components'
 import { Notice, PageHeader, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
 import { providerService } from '../../lib/provider-service'
-import type { RequestMessage } from '../../types/provider'
+import type { RequestAttachmentRow, RequestMessage } from '../../types/provider'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -59,6 +59,7 @@ export default function RequestInbox() {
 function RequestDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const req = useResource(() => providerService.getRequest(id), [id])
   const msgs = useResource(() => providerService.listMessages(id), [id])
+  const atts = useResource(() => providerService.listRequestAttachments(id).catch(() => [] as RequestAttachmentRow[]), [id])
   const [action, setAction] = useState<'review' | 'info' | 'reject' | null>(null)
   const [text, setText] = useState('')
   const [pending, setPending] = useState(false)
@@ -128,6 +129,25 @@ function RequestDetail({ id, onClose }: { id: number; onClose: () => void }) {
           </ActionButton>
         </div>
       </SurfaceCard>}
+
+      <div className="mt-6 border-t border-line pt-4">
+        <h3 className="mb-3 font-semibold">Attachments</h3>
+        <Resource {...atts} retry={atts.reload}>
+          {atts.data && atts.data.length === 0
+            ? <p className="text-sm text-text-secondary">No attachments from the client.</p>
+            : <div className="space-y-2">{atts.data?.map(a => (
+                <div key={a.id} className="flex items-center justify-between gap-2 rounded-docket border border-line bg-paper p-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{a.file_name}</p>
+                    <p className="text-xs text-text-secondary">{a.content_type} · {dateTime(a.created_at)}</p>
+                  </div>
+                  <ActionButton variant="stub" size="small" onClick={() => providerService.downloadRequestAttachment(id, a.id, a.file_name)}>
+                    Download
+                  </ActionButton>
+                </div>
+              ))}</div>}
+        </Resource>
+      </div>
 
       <div className="mt-6 border-t border-line pt-4">
         <h3 className="mb-3 font-semibold">Conversation</h3>

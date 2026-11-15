@@ -7,7 +7,7 @@ import type {
   JobRow, JobDetailRow, EmployeeRow, 
   EmployeeCreateResponse, EmployeeUpdateInput,
   AdminProviderRow, ProviderActionResponse,
-  DisputeRow,NotificationRow, NotificationList,
+  DisputeRow,NotificationRow, NotificationList,RequestAttachmentRow,
 } from '../types/provider'
 
 export const providerService = {
@@ -183,6 +183,24 @@ export const providerService = {
   markAllNotificationsRead: () =>
     api<{ updated_count: number; message: string }>('/notifications/read-all', 'PATCH'),
   
+
+
+    listRequestAttachments: (requestId: number) =>
+    api<RequestAttachmentRow[]>(`/requests/${requestId}/attachments`),
+  uploadRequestAttachment: (requestId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiUpload<RequestAttachmentRow>(`/requests/${requestId}/attachments`, form)
+  },
+  downloadRequestAttachment: async (requestId: number, attachmentId: number, fileName: string) => {
+    const blob = await apiBlob(`/requests/${requestId}/attachments/${attachmentId}`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
 
 
 }

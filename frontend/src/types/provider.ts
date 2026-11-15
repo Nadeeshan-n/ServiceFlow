@@ -233,3 +233,11 @@ export type NotificationList = {
   total: number
   total_pages: number
 }
+
+export type RequestAttachmentRow = {
+  id: number
+  request_id: number
+  file_name: string
+  content_type: string
+  created_at: string
+}
