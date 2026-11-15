@@ -133,7 +133,6 @@ export default function App() {
 
         <Route path="/manager" element={<Shell role="manager"><ManagerDashboard /></Shell>} />
         <Route path="/manager/requests" element={<Shell role="manager"><RequestInbox /></Shell>} />
-        <Route path="/manager/quotations" element={<Shell role="manager"><RequestInbox /></Shell>} />
         <Route path="/manager/quotations/:requestId" element={<Shell role="manager"><QuoteBuilder /></Shell>} />
         <Route path="/manager/jobs" element={<Shell role="manager"><ManagerJobs /></Shell>} />
         <Route path="/manager/schedule" element={<Shell role="manager"><ManagerSchedule /></Shell>} />
