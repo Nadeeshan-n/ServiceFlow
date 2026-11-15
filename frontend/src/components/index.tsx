@@ -140,6 +140,7 @@ export const roleNav: Record<'client'|'manager'|'employee'|'admin',NavItem[]> = 
   manager:[
     {label:'Dashboard',href:'/manager',icon:'dashboard'},
     {label:'Requests',href:'/manager/requests',icon:'requests'},
+    {label:'Pipeline',href:'/manager/pipeline',icon:'categories'},
     {label:'Jobs',href:'/manager/jobs',icon:'jobs'},
     {label:'Schedule',href:'/manager/schedule',icon:'schedule'},
     {label:'Invoices',href:'/manager/invoices',icon:'invoices'},
