@@ -4,6 +4,12 @@ from sqlalchemy.orm import Session
 
 from app.models import Provider, User
 
+from app.services.notification_events import (
+    NotificationType,
+    best_effort_notification,
+    notify_provider_owners,
+)
+
 
 VALID_STATUSES = {
     "PENDING",
@@ -127,6 +133,14 @@ def approve_provider(db: Session, provider_id: int):
         )
 
     try:
+        with best_effort_notification(db, NotificationType.PROVIDER_APPROVED):
+            notify_provider_owners(
+                db,
+                provider_id=provider_id,
+                title="Provider Approved",
+                message="Your provider account was approved.",
+                notification_type=NotificationType.PROVIDER_APPROVED,
+            )
         db.commit()
         db.refresh(provider)
     except Exception:
@@ -161,6 +175,14 @@ def reject_provider(db: Session, provider_id: int):
     provider.verification_status = "REJECTED"
 
     try:
+        with best_effort_notification(db, NotificationType.PROVIDER_REJECTED):
+            notify_provider_owners(
+                db,
+                provider_id=provider_id,
+                title="Provider Rejected",
+                message="Your provider account was rejected.",
+                notification_type=NotificationType.PROVIDER_REJECTED,
+            )
         db.commit()
         db.refresh(provider)
     except Exception:
@@ -195,6 +217,14 @@ def suspend_provider(db: Session, provider_id: int):
     provider.verification_status = "SUSPENDED"
 
     try:
+        with best_effort_notification(db, NotificationType.PROVIDER_SUSPENDED):
+            notify_provider_owners(
+                db,
+                provider_id=provider_id,
+                title="Provider Suspended",
+                message="Your provider account was suspended.",
+                notification_type=NotificationType.PROVIDER_SUSPENDED,
+            )
         db.commit()
         db.refresh(provider)
     except Exception:

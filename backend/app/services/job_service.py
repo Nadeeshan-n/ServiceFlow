@@ -15,6 +15,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.services.invoice_service import ensure_invoice_for_completed_job
 
+from app.services.notification_events import (
+    NotificationType,
+    best_effort_notification,
+    create_notification,
+)
+
 
 TABLES = (
     "jobs", "job_records", "users", "providers", "service_requests",
@@ -311,6 +317,19 @@ def propose_schedule(db: Session, user: Any, job_id: int, scheduled_date: date,
         updated_at=datetime.now(timezone.utc),
     ))
     _append_status_record(db, job_id, f"Schedule proposed for {scheduled_date.isoformat()} {scheduled_time.isoformat()}")
+    with best_effort_notification(db, NotificationType.SCHEDULE_PROPOSED):
+        requests = tables(db)["service_requests"]
+        client_id = db.scalar(
+            select(requests.c.client_id).where(requests.c.id == job["request_id"])
+        )
+        if client_id is not None:
+            create_notification(
+                db,
+                user_id=client_id,
+                title="Schedule Proposed",
+                message=f"A schedule was proposed for job #{job_id}.",
+                notification_type=NotificationType.SCHEDULE_PROPOSED,
+            )
     db.commit()
     return _get_job(db, user, job_id)
 
@@ -334,6 +353,14 @@ def approve_schedule(db: Session, user: Any, job_id: int) -> dict:
         updated_at=datetime.now(timezone.utc),
     ))
     _append_status_record(db, job_id, "Client approved the proposed schedule")
+    with best_effort_notification(db, NotificationType.SCHEDULE_APPROVED):
+        create_notification(
+            db,
+            user_id=int(job["assigned_user_id"]),
+            title="Schedule Approved",
+            message=f"The client approved the schedule for job #{job_id}.",
+            notification_type=NotificationType.SCHEDULE_APPROVED,
+        )
     db.commit()
     return _get_job(db, user, job_id)
 
@@ -372,6 +399,19 @@ def complete_job(db: Session, user: Any, job_id: int) -> dict:
     ))
     _append_status_record(db, job_id, "Job completed")
     ensure_invoice_for_completed_job(db, job_id)
+    with best_effort_notification(db, NotificationType.JOB_COMPLETED):
+        requests = tables(db)["service_requests"]
+        client_id = db.scalar(
+            select(requests.c.client_id).where(requests.c.id == job["request_id"])
+        )
+        if client_id is not None:
+            create_notification(
+                db,
+                user_id=client_id,
+                title="Job Completed",
+                message=f"Job #{job_id} has been completed.",
+                notification_type=NotificationType.JOB_COMPLETED,
+            )
     db.commit()
     return _get_job(db, user, job_id)
 

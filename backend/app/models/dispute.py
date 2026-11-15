@@ -4,9 +4,11 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     String,
     Text,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,8 +19,15 @@ class Dispute(Base):
     __tablename__ = "disputes"
 
     __table_args__ = (
+        Index(
+            "uq_disputes_active_job",
+            "job_id",
+            unique=True,
+            postgresql_where=text("status IN ('OPEN', 'UNDER_REVIEW')"),
+            sqlite_where=text("status IN ('OPEN', 'UNDER_REVIEW')"),
+        ),
         CheckConstraint(
-            "status IN ('OPEN', 'UNDER_REVIEW', 'CLOSED')",
+            "status IN ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED')",
             name="ck_disputes_status",
         ),
         CheckConstraint(
@@ -30,8 +39,8 @@ class Dispute(Base):
             name="ck_disputes_description",
         ),
         CheckConstraint(
-            "(status = 'CLOSED' AND closed_at IS NOT NULL) OR "
-            "(status <> 'CLOSED' AND closed_at IS NULL)",
+            "(status IN ('RESOLVED', 'CLOSED') AND closed_at IS NOT NULL) OR "
+            "(status NOT IN ('RESOLVED', 'CLOSED') AND closed_at IS NULL)",
             name="ck_disputes_closed_at",
         ),
         CheckConstraint(

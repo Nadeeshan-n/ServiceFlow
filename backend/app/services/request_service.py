@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from app.schemas.service_request import RequestCreate
 from app.services.notification_events import (
     NotificationType,
+    best_effort_notification,
     notify_provider_owners,
 )
 
@@ -202,13 +203,14 @@ def create_request(db: Session, user: Any, data: RequestCreate) -> dict[str, Any
     values.update(client_id=int(user.id), status="NEW")
     try:
         request_id = db.execute(insert(requests).values(**values).returning(requests.c.id)).scalar_one()
-        notify_provider_owners(
-            db,
-            provider_id=int(data.provider_id),
-            title="New Service Request",
-            message=f"You received a new service request #{request_id}.",
-            notification_type=NotificationType.REQUEST_CREATED,
-        )
+        with best_effort_notification(db, NotificationType.REQUEST_CREATED):
+            notify_provider_owners(
+                db,
+                provider_id=int(data.provider_id),
+                title="New Service Request",
+                message=f"You received a new service request #{request_id}.",
+                notification_type=NotificationType.REQUEST_CREATED,
+            )
         db.commit()
     except IntegrityError:
         db.rollback()

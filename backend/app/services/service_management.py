@@ -252,11 +252,19 @@ def search_providers(
 
 def public_provider(db: Session, provider_id: int) -> ProviderDetail:
     query, _ = _directory_query()
-    row = db.execute(query.where(Provider.id == provider_id)).one_or_none()
+    review_count = (
+        select(func.count(Job.rating))
+        .where(Job.provider_id == Provider.id, Job.status == "COMPLETED")
+        .correlate(Provider)
+        .scalar_subquery()
+    )
+    row = db.execute(
+        query.add_columns(review_count).where(Provider.id == provider_id)
+    ).one_or_none()
     if row is None:
         raise HTTPException(404, "Provider not found")
-    provider = row[0]
-    summary = _provider_summary(*row)
+    provider, rating, completed_jobs, starting_price, count = row
+    summary = _provider_summary(provider, rating, completed_jobs, starting_price)
 
     areas = db.scalars(
         select(ProviderArea.area_name)
@@ -283,6 +291,7 @@ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
         .order_by(Policy.id)
     )
     return ProviderDetail(
+        review_count=count,
         **summary.model_dump(),
         email=provider.email,
         phone=provider.phone,

@@ -22,6 +22,7 @@ from app.api.routes.admin_providers import (
 from app.api.routes.invoices import router as invoices_router
 from app.api.routes.payments import router as payments_router
 from app.api.routes.notifications import router as notifications_router
+from app.api.routes.disputes import router as disputes_router
 from app.api.routes.service_areas import router as service_areas_router
 
 app = FastAPI(
@@ -64,6 +65,7 @@ app.include_router(invoices_router)
 app.include_router(payments_router)
 app.include_router(admin_providers_router)
 app.include_router(notifications_router)
+app.include_router(disputes_router)
 
 
 @app.get("/health", tags=["Health"])

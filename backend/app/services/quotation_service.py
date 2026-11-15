@@ -18,6 +18,7 @@ from app.schemas.quotation import QuotationCreate, QuotationUpdate
 
 from app.services.notification_events import (
     NotificationType,
+    best_effort_notification,
     create_notification,
     notify_provider_owners,
 )
@@ -362,13 +363,14 @@ def update_draft_quotation(db: Session, user: Any, quotation_id: int, data: Quot
             _insert_items(db, quotation_id, data.items)
         if data.status == "SENT":
             _set_request_status(db, int(request["id"]), "QUOTATION_SENT")
-            create_notification(
-                db,
-                user_id=int(request["client_id"]),
-                title="Quotation Received",
-                message=f"You received a quotation #{quotation_id}.",
-                notification_type=NotificationType.QUOTATION_SENT,
-            )
+            with best_effort_notification(db, NotificationType.QUOTATION_SENT):
+                create_notification(
+                    db,
+                    user_id=int(request["client_id"]),
+                    title="Quotation Received",
+                    message=f"You received a quotation #{quotation_id}.",
+                    notification_type=NotificationType.QUOTATION_SENT,
+                )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -464,13 +466,14 @@ def approve_quotation(db: Session, user: Any, quotation_id: int) -> dict[str, An
             approval_values["updated_at"] = _now()
         db.execute(update(quotes).where(quotes.c.id == quotation_id).values(**approval_values))
         job_id = _create_job_for_approved_quote(db, quote, request)
-        notify_provider_owners(
-            db,
-            provider_id=int(request["provider_id"]),
-            title="Quotation Approved",
-            message=f"Your quotation #{quotation_id} has been approved.",
-            notification_type=NotificationType.QUOTATION_APPROVED,
-        )
+        with best_effort_notification(db, NotificationType.QUOTATION_APPROVED):
+            notify_provider_owners(
+                db,
+                provider_id=int(request["provider_id"]),
+                title="Quotation Approved",
+                message=f"Your quotation #{quotation_id} has been approved.",
+                notification_type=NotificationType.QUOTATION_APPROVED,
+            )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -504,13 +507,14 @@ def decline_quotation(db: Session, user: Any, quotation_id: int) -> dict[str, An
             # The proposal permits a declined quotation to be replaced. Return the
             # request to provider review so another quotation can be prepared.
             _set_request_status(db, int(request["id"]), "UNDER_REVIEW")
-        notify_provider_owners(
-            db,
-            provider_id=int(request["provider_id"]),
-            title="Quotation Declined",
-            message=f"Your quotation #{quotation_id} has been declined.",
-            notification_type=NotificationType.QUOTATION_DECLINED,
-        )
+        with best_effort_notification(db, NotificationType.QUOTATION_DECLINED):
+            notify_provider_owners(
+                db,
+                provider_id=int(request["provider_id"]),
+                title="Quotation Declined",
+                message=f"Your quotation #{quotation_id} has been declined.",
+                notification_type=NotificationType.QUOTATION_DECLINED,
+            )
         db.commit()
     except Exception:
         db.rollback()

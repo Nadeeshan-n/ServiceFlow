@@ -13,6 +13,12 @@ from app.models.quotation import Quotation
 from app.models.service_request import ServiceRequest
 from app.models.payment import Payment
 
+from app.services.notification_events import (
+    NotificationType,
+    best_effort_notification,
+    notify_provider_owners,
+)
+
 
 PROVIDER_ROLES = {"COMPANY_MANAGER", "INDIVIDUAL_PROVIDER"}
 READ_ROLES = PROVIDER_ROLES | {"CLIENT"}
@@ -154,6 +160,14 @@ def record_payment(db: Session, user: Any, invoice_id: int, payload: dict) -> di
             "received_at": payment.received_at,
             "invoice": _invoice_public(invoice),
         }
+        with best_effort_notification(db, NotificationType.PAYMENT_RECORDED):
+            notify_provider_owners(
+                db,
+                provider_id=job.provider_id,
+                title="Payment Recorded",
+                message=f"Payment #{payment.id} was recorded for invoice #{invoice.id}.",
+                notification_type=NotificationType.PAYMENT_RECORDED,
+            )
         db.commit()
         return result
     except Exception:

@@ -106,6 +106,7 @@ class PublicPolicy(BaseModel):
 
 
 class ProviderDetail(ProviderSummary):
+    review_count: int
     email: str
     phone: str
     address: str | None
