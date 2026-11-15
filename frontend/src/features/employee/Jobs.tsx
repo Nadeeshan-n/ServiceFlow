@@ -1,107 +1,214 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ActionButton, EmptyState, Modal, SelectField, SurfaceCard, TextAreaField,
+  ActionButton, EmptyState, SurfaceCard, Tabs, TextField,
 } from '../../components'
-import { Notice, PageHeader, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
-import { providerService } from '../../lib/provider-service'
-import type { JobRow } from '../../types/provider'
+import { Notice, RecordStatus, Resource, useResource, today } from '../../components/client-shared'
+import { employeeService } from '../../lib/employee-service'
+import type { EmployeeRow, SkillRow } from '../../types/provider'
 
-const STATUS_FILTERS = [
-  { value: '', label: 'All statuses' },
-  { value: 'JOB_CREATED', label: 'Job created' },
-  { value: 'SCHEDULE_PROPOSED', label: 'Schedule proposed' },
-  { value: 'SCHEDULE_CONFIRMED', label: 'Schedule confirmed' },
-  { value: 'IN_PROGRESS', label: 'In progress' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
+const tabs = [
+  { key: 'today', label: 'Today' },
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'history', label: 'History' },
+  { key: 'profile', label: 'Profile' },
+  { key: 'skills', label: 'Skills' },
+] as const
+type Tab = typeof tabs[number]['key']
 
-export default function ManagerJobs() {
-  const [status, setStatus] = useState('')
-  const jobs = useResource(() => providerService.listJobs({ status: status || undefined }), [status])
-  const [cancelling, setCancelling] = useState<JobRow | null>(null)
-  const navigate = useNavigate()
-
-  return <>
-    <PageHeader title="Jobs" description="All jobs for your company." />
-    <div className="mb-5 max-w-xs">
-      <SelectField label="Filter by status" value={status} onChange={e => setStatus(e.target.value)}>
-        {STATUS_FILTERS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </SelectField>
+export default function EmployeeJobs() {
+  const [tab, setTab] = useState<Tab>('today')
+  return <div className="space-y-6">
+    <div>
+      <h1 className="sf-display text-2xl font-bold">My Day</h1>
+      <p className="mt-1 text-sm text-text-secondary">Your jobs and personal info.</p>
     </div>
-
-    <Resource {...jobs} retry={jobs.reload}>
-      {jobs.data && jobs.data.items.length === 0
-        ? <EmptyState title="No jobs" description={status ? 'No jobs with this status.' : 'Approved quotations create jobs automatically.'} />
-        : <div className="space-y-2">{jobs.data?.items.map(j => (
-            <SurfaceCard key={j.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="sf-mono text-xs text-text-secondary">Job #{j.id}</span>
-                  <RecordStatus status={j.status} />
-                </div>
-                <p className="mt-1 text-sm">
-                  Request #{j.request_id}
-                  {j.schedule_date && ` · ${j.schedule_date}${j.schedule_time ? ` ${j.schedule_time.slice(0, 5)}` : ''}`}
-                </p>
-                <p className="text-xs text-text-secondary">
-                  {j.assigned_user_id ? `Assigned to employee #${j.assigned_user_id}` : 'Not assigned'}
-                  {j.completed_at && ` · Completed ${dateTime(j.completed_at)}`}
-                  {j.cancelled_at && ` · Cancelled ${dateTime(j.cancelled_at)}`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {['JOB_CREATED', 'SCHEDULE_PROPOSED'].includes(j.status) && (
-                  <ActionButton variant="stub" size="small" onClick={() => navigate('/manager/schedule')}>
-                    Schedule
-                  </ActionButton>
-                )}
-                {['JOB_CREATED', 'SCHEDULE_PROPOSED', 'SCHEDULE_CONFIRMED'].includes(j.status) && (
-                  <ActionButton variant="void" size="small" onClick={() => setCancelling(j)}>Cancel</ActionButton>
-                )}
-              </div>
-            </SurfaceCard>
-          ))}</div>}
-    </Resource>
-
-    <Modal open={!!cancelling} title="Cancel this job?" onClose={() => setCancelling(null)}>
-      {cancelling && <CancelJob
-        job={cancelling}
-        onDone={() => { setCancelling(null); jobs.reload() }}
-        onCancel={() => setCancelling(null)}
-      />}
-    </Modal>
-  </>
+    <Tabs label="My Day" items={tabs} value={tab} onChange={setTab}>
+      {tab === 'today' && <JobsTab tab="today" />}
+      {tab === 'upcoming' && <JobsTab tab="upcoming" />}
+      {tab === 'history' && <JobsTab tab="history" />}
+      {tab === 'profile' && <ProfileTab />}
+      {tab === 'skills' && <SkillsTab />}
+    </Tabs>
+  </div>
 }
 
-function CancelJob({ job, onDone, onCancel }: {
-  job: JobRow
-  onDone: () => void
-  onCancel: () => void
-}) {
-  const [reason, setReason] = useState('')
+// ---------- Jobs ----------
+function JobsTab({ tab }: { tab: 'today' | 'upcoming' | 'history' }) {
+  const jobs = useResource(() => employeeService.listMyJobs())
+  const navigate = useNavigate()
+  const all = jobs.data?.items ?? []
+  const todayStr = today()
+
+  const filtered =
+    tab === 'today'
+      ? all.filter(j =>
+          j.schedule_date === todayStr &&
+          ['SCHEDULE_CONFIRMED', 'IN_PROGRESS', 'COMPLETED'].includes(j.status),
+        )
+      : tab === 'upcoming'
+      ? all
+          .filter(j =>
+            j.status === 'SCHEDULE_CONFIRMED' &&
+            j.schedule_date &&
+            j.schedule_date > todayStr,
+          )
+          .sort((a, b) => (a.schedule_date ?? '').localeCompare(b.schedule_date ?? ''))
+      : all
+          .filter(j => j.status === 'COMPLETED')
+          .sort((a, b) => (b.schedule_date ?? '').localeCompare(a.schedule_date ?? ''))
+
+  return <Resource {...jobs} retry={jobs.reload}>
+    {filtered.length === 0
+      ? <EmptyState
+          title={`No ${tab} jobs`}
+          description={
+            tab === 'today' ? 'No jobs scheduled for today.' :
+            tab === 'upcoming' ? 'No upcoming jobs assigned yet.' :
+            'Completed jobs will appear here.'
+          }
+        />
+      : <div className="grid gap-4 md:grid-cols-2">{filtered.map(j => (
+          <button
+            key={j.id}
+            type="button"
+            onClick={() => navigate(`/employee/jobs/${j.id}`)}
+            className="text-left"
+          >
+            <SurfaceCard className="space-y-2 p-4 transition hover:border-graphite">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="sf-mono text-xs text-text-secondary">Job #{j.id}</span>
+                <RecordStatus status={j.status} />
+              </div>
+              <p className="text-sm">
+                {j.schedule_date
+                  ? `${j.schedule_date}${j.schedule_time ? ` ${j.schedule_time.slice(0, 5)}` : ''}`
+                  : 'Not scheduled'}
+              </p>
+              <p className="text-xs text-text-secondary">
+                Schedule: {j.schedule_status.replaceAll('_', ' ').toLowerCase()}
+              </p>
+            </SurfaceCard>
+          </button>
+        ))}</div>}
+  </Resource>
+}
+
+// ---------- Profile ----------
+function ProfileTab() {
+  const profile = useResource(() => employeeService.me())
+  return <Resource {...profile} retry={profile.reload}>
+    {profile.data && <ProfileForm employee={profile.data} onSaved={profile.reload} />}
+  </Resource>
+}
+
+function ProfileForm({ employee, onSaved }: { employee: EmployeeRow; onSaved: () => void }) {
+  const [name, setName] = useState(employee.name)
+  const [phone, setPhone] = useState(employee.phone)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault(); if (pending || !reason.trim()) return
-    setPending(true); setError('')
+  const dirty = name !== employee.name || phone !== employee.phone
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    if (pending || !dirty) return
+    setPending(true); setError(''); setSaved(false)
     try {
-      await providerService.cancelJob(job.id, reason.trim())
-      onDone()
+      await employeeService.updateMe({ name: name.trim(), phone: phone.trim() })
+      setSaved(true)
+      onSaved()
     } catch (c) { setError((c as Error).message) } finally { setPending(false) }
   }
 
-  return <form onSubmit={submit} className="space-y-4">
-    <p className="text-sm">Job #{job.id} will be cancelled. The employee will no longer see it in My Day.</p>
-    <TextAreaField label="Reason for cancellation" value={reason} onChange={e => setReason(e.target.value)} required minLength={3} />
-    {error && <Notice error>{error}</Notice>}
-    <div className="flex justify-end gap-2">
-      <ActionButton type="button" onClick={onCancel}>Keep job</ActionButton>
-      <ActionButton type="submit" variant="void" disabled={pending || reason.trim().length < 3}>
-        {pending ? 'Cancelling…' : 'Cancel job'}
+  return <SurfaceCard className="max-w-xl p-5">
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <p className="sf-mono text-xs text-text-secondary">EMAIL</p>
+        <p className="mt-1">{employee.email}</p>
+      </div>
+      <TextField
+        label="Full name"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        required
+        minLength={2}
+        maxLength={150}
+      />
+      <TextField
+        label="Phone"
+        type="tel"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        required
+        minLength={7}
+        maxLength={30}
+      />
+      {error && <Notice error>{error}</Notice>}
+      {saved && <Notice>Profile saved.</Notice>}
+      <ActionButton type="submit" variant="stamp" disabled={pending || !dirty}>
+        {pending ? 'Saving…' : 'Save profile'}
       </ActionButton>
-    </div>
-  </form>
+    </form>
+  </SurfaceCard>
+}
+
+// ---------- Skills ----------
+function SkillsTab() {
+  const skills = useResource(() => employeeService.listSkills())
+  const [name, setName] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+
+  async function add(e: FormEvent) {
+    e.preventDefault()
+    if (pending || !name.trim()) return
+    setPending(true); setError('')
+    try {
+      await employeeService.addSkill(name.trim())
+      setName('')
+      skills.reload()
+    } catch (c) { setError((c as Error).message) } finally { setPending(false) }
+  }
+
+  async function remove(id: number) {
+    setError('')
+    try {
+      await employeeService.removeSkill(id)
+      skills.reload()
+    } catch (c) { setError((c as Error).message) }
+  }
+
+  return <>
+    <SurfaceCard className="mb-4 max-w-xl p-4">
+      <form onSubmit={add} className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[200px] flex-1">
+          <TextField
+            label="Add a skill"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+            maxLength={100}
+            placeholder="e.g. Electrical maintenance"
+          />
+        </div>
+        <ActionButton type="submit" variant="stamp" disabled={pending || !name.trim()}>
+          {pending ? 'Adding…' : 'Add'}
+        </ActionButton>
+      </form>
+      {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
+    </SurfaceCard>
+
+    <Resource {...skills} retry={skills.reload}>
+      {skills.data && skills.data.length === 0
+        ? <EmptyState title="No skills yet" description="Add skills so your manager can schedule you for matching jobs." />
+        : <div className="max-w-xl space-y-2">{skills.data?.map((s: SkillRow) => (
+            <SurfaceCard key={s.id} className="flex items-center justify-between p-3">
+              <span>{s.skill_name}</span>
+              <ActionButton variant="void" size="small" onClick={() => remove(s.id)}>Remove</ActionButton>
+            </SurfaceCard>
+          ))}</div>}
+    </Resource>
+  </>
 }

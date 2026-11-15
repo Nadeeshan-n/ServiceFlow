@@ -55,8 +55,6 @@ import ManagerJobs from "./features/manager/Jobs";
 import ManagerSchedule from "./features/manager/Schedule";
 import Invoices from "./features/manager/Invoices";
 import ManagerTeam from "./features/manager/Team";
-import PolicyPage from "./features/manager/PolicyPage";
-import CompanyProfilePage from "./features/manager/CompanyProfile";
 import EmployeeJobs from "./features/employee/Jobs";
 import EmployeeJobDetail from "./features/employee/JobDetail";
 import AdminCompanies from "./features/admin/Companies";
@@ -149,8 +147,8 @@ export default function App() {
         <Route path="/manager/invoices" element={<RoleGuard role="manager"><Shell role="manager"><Invoices /></Shell></RoleGuard>} />
         <Route path="/manager/business" element={<RoleGuard role="manager"><Shell role="manager"><MyBusiness /></Shell></RoleGuard>} />
         <Route path="/manager/team" element={<RoleGuard role="manager"><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />
-        <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><PolicyPage /></Shell></RoleGuard>} />
-        <Route path="/manager/company" element={<RoleGuard role="manager"><Shell role="manager"><CompanyProfilePage /></Shell></RoleGuard>} />
+        <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><FlowAIPlaceholder /></Shell></RoleGuard>} />
+        <Route path="/manager/company" element={<RoleGuard role="manager"><Navigate to="/manager/business" replace /></RoleGuard>} />
 
         <Route path="/employee" element={<RoleGuard role="employee"><Navigate to="/employee/jobs" replace /></RoleGuard>} />
         <Route path="/employee/jobs" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobs /></Shell></RoleGuard>} />
@@ -166,6 +164,22 @@ export default function App() {
       </Routes>
     </SessionProvider>
   </BrowserRouter>
+}
+
+function FlowAIPlaceholder() {
+  return <div>
+    <PageHeader title="Flow AI" description="Ask questions about your policies and business data." />
+    <SurfaceCard className="max-w-2xl p-5">
+      <p className="text-sm text-text-secondary">
+        Flow AI is being built by Member 4. The panel will appear here once the
+        {' '}<code>/ai/ask-docs</code> and <code>/ai/ask-data</code> endpoints are live.
+      </p>
+      <p className="mt-3 text-sm text-text-secondary">
+        In the meantime, upload policies in <Link className="sf-link" to="/manager/business">My Business → Policies</Link> so
+        the AI has documents to reference when it launches.
+      </p>
+    </SurfaceCard>
+  </div>
 }
 
 function AdminSettingsPlaceholder() {
