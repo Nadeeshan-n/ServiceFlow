@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   EmptyState, SelectField, SurfaceCard, Tabs,
 } from '../../components'
@@ -35,7 +36,9 @@ const JOB_STATUS = [
 export default function AllRequestsJobs() {
   const [tab, setTab] = useState<Tab>('requests')
   return <>
-    <PageHeader title="All requests & jobs" description="Platform-wide view of every request and job." />
+    <PageHeader title="All requests & jobs" description="Platform-wide view of every request and job.">
+      <Link to="/admin/disputes" className="sf-link">Review disputes →</Link>
+    </PageHeader>
     <Tabs label="Platform data" items={tabs} value={tab} onChange={setTab}>
       {tab === 'requests' && <RequestsView />}
       {tab === 'jobs' && <JobsView />}

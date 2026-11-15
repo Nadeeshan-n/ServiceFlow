@@ -109,66 +109,74 @@ function JobScheduler({ jobId, employees, onChanged, onClose }: {
   }
 
   return <Resource {...job} retry={job.reload}>
-    {job.data && <>
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <RecordStatus status={job.data.status} />
-          <span className="sf-mono text-xs text-text-secondary">Schedule: {job.data.schedule_status}</span>
-        </div>
-        {job.data.schedule_date && (
-          <p className="text-sm">
-            Proposed: <strong>{job.data.schedule_date} at {job.data.schedule_time?.slice(0, 5)}</strong>
-          </p>
-        )}
-        <p className="text-sm text-text-secondary">
-          {job.data.assigned_user_id ? `Assigned to employee #${job.data.assigned_user_id}` : 'No employee assigned'}
-        </p>
-      </div>
-
-      {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
-
-      {employees.length > 0 && !job.data.assigned_user_id && job.data.status === 'JOB_CREATED' && (
-        <SurfaceCard className="mt-4 space-y-3 p-4">
-          <h3 className="font-semibold">Assign employee</h3>
-          <SelectField label="Employee" value={employeeId} onChange={e => setEmployeeId(e.target.value)}>
-            <option value="">— Select —</option>
-            {employees.filter(e => e.status === 'ACTIVE').map(e => (
-              <option key={e.id} value={e.id}>{e.name}</option>
-            ))}
-          </SelectField>
-          <div className="flex justify-end">
-            <ActionButton variant="stamp" onClick={assign} disabled={!employeeId || pending === 'assign'}>
-              {pending === 'assign' ? 'Assigning…' : 'Assign'}
-            </ActionButton>
+    {job.data && (() => {
+      const isReassign = !!job.data.assigned_user_id
+      const canAssign = employees.length > 0 &&
+        ['JOB_CREATED', 'SCHEDULE_PROPOSED'].includes(job.data.status)
+      return <>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <RecordStatus status={job.data.status} />
+            <span className="sf-mono text-xs text-text-secondary">Schedule: {job.data.schedule_status}</span>
           </div>
-        </SurfaceCard>
-      )}
+          {job.data.schedule_date && (
+            <p className="text-sm">
+              Proposed: <strong>{job.data.schedule_date} at {job.data.schedule_time?.slice(0, 5)}</strong>
+            </p>
+          )}
+          <p className="text-sm text-text-secondary">
+            {job.data.assigned_user_id ? `Assigned to employee #${job.data.assigned_user_id}` : 'No employee assigned'}
+          </p>
+        </div>
 
-      {job.data.schedule_status === 'NOT_PROPOSED' && job.data.status === 'JOB_CREATED' && (
-        <SurfaceCard className="mt-4 space-y-3 p-4">
-          <h3 className="font-semibold">Propose schedule</h3>
-          <form onSubmit={propose} className="space-y-3">
-            <TextField label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
-            <TextField label="Time" type="time" value={time} onChange={e => setTime(e.target.value)} required />
+        {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
+
+        {canAssign && (
+          <SurfaceCard className="mt-4 space-y-3 p-4">
+            <h3 className="font-semibold">{isReassign ? 'Reassign employee' : 'Assign employee'}</h3>
+            {isReassign && (
+              <Notice>Changing the employee may reset the proposed schedule. The backend will validate.</Notice>
+            )}
+            <SelectField label="Employee" value={employeeId} onChange={e => setEmployeeId(e.target.value)}>
+              <option value="">— {isReassign ? 'Pick a new employee' : 'Select'} —</option>
+              {employees.filter(e => e.status === 'ACTIVE').map(e => (
+                <option key={e.id} value={e.id}>{e.name}</option>
+              ))}
+            </SelectField>
             <div className="flex justify-end">
-              <ActionButton type="submit" variant="stamp" disabled={!date || !time || pending === 'schedule'}>
-                {pending === 'schedule' ? 'Proposing…' : 'Propose schedule'}
+              <ActionButton variant="stamp" onClick={assign} disabled={!employeeId || pending === 'assign'}>
+                {pending === 'assign' ? 'Assigning…' : (isReassign ? 'Reassign' : 'Assign')}
               </ActionButton>
             </div>
-          </form>
-        </SurfaceCard>
-      )}
+          </SurfaceCard>
+        )}
 
-      {job.data.schedule_status === 'PENDING' && (
-        <div className="mt-4"><Notice>Schedule proposed — waiting for the client to approve.</Notice></div>
-      )}
-      {job.data.schedule_status === 'CONFIRMED' && (
-        <div className="mt-4"><Notice>Schedule confirmed. The employee can start the job on the scheduled date.</Notice></div>
-      )}
+        {job.data.schedule_status === 'NOT_PROPOSED' && job.data.status === 'JOB_CREATED' && (
+          <SurfaceCard className="mt-4 space-y-3 p-4">
+            <h3 className="font-semibold">Propose schedule</h3>
+            <form onSubmit={propose} className="space-y-3">
+              <TextField label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} required />
+              <TextField label="Time" type="time" value={time} onChange={e => setTime(e.target.value)} required />
+              <div className="flex justify-end">
+                <ActionButton type="submit" variant="stamp" disabled={!date || !time || pending === 'schedule'}>
+                  {pending === 'schedule' ? 'Proposing…' : 'Propose schedule'}
+                </ActionButton>
+              </div>
+            </form>
+          </SurfaceCard>
+        )}
 
-      <div className="mt-5 flex justify-end">
-        <ActionButton onClick={onClose}>Close</ActionButton>
-      </div>
-    </>}
+        {job.data.schedule_status === 'PENDING' && (
+          <div className="mt-4"><Notice>Schedule proposed — waiting for the client to approve.</Notice></div>
+        )}
+        {job.data.schedule_status === 'CONFIRMED' && (
+          <div className="mt-4"><Notice>Schedule confirmed. The employee can start the job on the scheduled date.</Notice></div>
+        )}
+
+        <div className="mt-5 flex justify-end">
+          <ActionButton onClick={onClose}>Close</ActionButton>
+        </div>
+      </>
+    })()}
   </Resource>
 }
