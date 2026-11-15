@@ -272,6 +272,7 @@ function PoliciesTab() {
   const policies = useResource(() => providerService.listMyPolicies())
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
+  const [downloading, setDownloading] = useState<number | null>(null)
 
   async function remove(id: number) {
     setError('')
@@ -282,6 +283,11 @@ function PoliciesTab() {
     setError('')
     try { await providerService.activatePolicy(id); policies.reload() }
     catch (c) { setError((c as Error).message) }
+  }
+  async function download(id: number, title: string) {
+    setDownloading(id); setError('')
+    try { await providerService.downloadPolicy(id, title) }
+    catch (c) { setError((c as Error).message) } finally { setDownloading(null) }
   }
 
   return <>
@@ -303,7 +309,15 @@ function PoliciesTab() {
                 </h3>
                 <p className="text-sm text-text-secondary">{p.policy_type.replaceAll('_', ' ')}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <ActionButton
+                  variant="stub"
+                  size="small"
+                  onClick={() => download(p.id, p.title)}
+                  disabled={downloading === p.id}
+                >
+                  {downloading === p.id ? '…' : 'Download'}
+                </ActionButton>
                 {p.status !== 'ACTIVE' && <ActionButton variant="stub" size="small" onClick={() => activate(p.id)}>Activate</ActionButton>}
                 <ActionButton variant="void" size="small" onClick={() => remove(p.id)}>Delete</ActionButton>
               </div>

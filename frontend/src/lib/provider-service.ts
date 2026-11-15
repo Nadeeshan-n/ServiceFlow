@@ -210,4 +210,15 @@ export const providerService = {
     api<DisputeRow>(`/jobs/${jobId}/disputes`, 'POST', body),
 
 
+
+    downloadPolicy: async (id: number, title: string) => {
+    const blob = await apiBlob(`/policies/${id}/download`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title.replace(/[^\w\s-]/g, '')}.pdf`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
+
 }
