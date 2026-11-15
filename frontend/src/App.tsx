@@ -65,9 +65,6 @@ import "./styles/client.css";
 
 type Role = "manager" | "employee" | "admin";
 
-const EmployeeHome = () => <h1>EmployeeHome</h1>;
-const EmployeeSchedule = () => <h1>EmployeeSchedule</h1>;
-
 function Shell({ role, children }: { role: Role; children: ReactNode }) {
   const { user } = useSession();
   const location = useLocation();
@@ -155,10 +152,10 @@ export default function App() {
         <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><PolicyPage /></Shell></RoleGuard>} />
         <Route path="/manager/company" element={<RoleGuard role="manager"><Shell role="manager"><CompanyProfilePage /></Shell></RoleGuard>} />
 
-        <Route path="/employee" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeHome /></Shell></RoleGuard>} />
+        <Route path="/employee" element={<RoleGuard role="employee"><Navigate to="/employee/jobs" replace /></RoleGuard>} />
         <Route path="/employee/jobs" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobs /></Shell></RoleGuard>} />
         <Route path="/employee/jobs/:jobId" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobDetail /></Shell></RoleGuard>} />
-        <Route path="/employee/schedule" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeSchedule /></Shell></RoleGuard>} />
+        <Route path="/employee/schedule" element={<RoleGuard role="employee"><Navigate to="/employee/jobs" replace /></RoleGuard>} />
 
         <Route path="/admin" element={<RoleGuard role="admin"><Shell role="admin"><AdminDashboard /></Shell></RoleGuard>} />
         <Route path="/admin/companies" element={<RoleGuard role="admin"><Shell role="admin"><AdminCompanies /></Shell></RoleGuard>} />

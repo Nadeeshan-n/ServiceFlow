@@ -148,7 +148,9 @@ export const roleNav: Record<'client'|'manager'|'employee'|'admin',NavItem[]> = 
     {label:'Team',href:'/manager/team',icon:'team'},
     {label:'Flow AI',href:'/manager/ai',icon:'ai'},
   ],
-  employee:[{label:'Dashboard',href:'/employee',icon:'dashboard'},{label:'Jobs',href:'/employee/jobs',icon:'jobs'},{label:'Schedule',href:'/employee/schedule',icon:'schedule'}],
+  employee:[
+    {label:'My Day',href:'/employee/jobs',icon:'jobs'},
+  ],
   admin:[
     {label:'Dashboard',href:'/admin',icon:'dashboard'},
     {label:'Verification',href:'/admin/companies',icon:'company'},
