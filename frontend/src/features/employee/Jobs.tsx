@@ -1,142 +1,107 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { JobTicketCard, EmptyState } from "../../components";
-import { mockJobs, type Job, type JobState } from "../../mocks/data";
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  ActionButton, EmptyState, Modal, SelectField, SurfaceCard, TextAreaField,
+} from '../../components'
+import { Notice, PageHeader, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
+import { providerService } from '../../lib/provider-service'
+import type { JobRow } from '../../types/provider'
 
-type Tab = "today" | "upcoming" | "history";
+const STATUS_FILTERS = [
+  { value: '', label: 'All statuses' },
+  { value: 'JOB_CREATED', label: 'Job created' },
+  { value: 'SCHEDULE_PROPOSED', label: 'Schedule proposed' },
+  { value: 'SCHEDULE_CONFIRMED', label: 'Schedule confirmed' },
+  { value: 'IN_PROGRESS', label: 'In progress' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+]
 
-const jobStatus = (s: JobState): "awaiting" | "scheduled" | "in_progress" | "completed" => {
-  if (s === "JOB_CREATED") return "awaiting";
-  if (s === "SCHEDULE_PROPOSED") return "awaiting";
-  if (s === "SCHEDULE_CONFIRMED") return "scheduled";
-  if (s === "IN_PROGRESS") return "in_progress";
-  return "completed";
-};
+export default function ManagerJobs() {
+  const [status, setStatus] = useState('')
+  const jobs = useResource(() => providerService.listJobs({ status: status || undefined }), [status])
+  const [cancelling, setCancelling] = useState<JobRow | null>(null)
+  const navigate = useNavigate()
 
-const formatSlot = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleString("en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "Not scheduled";
-
-const isSameDay = (iso: string, ref: Date) => {
-  const d = new Date(iso);
-  return (
-    d.getFullYear() === ref.getFullYear() &&
-    d.getMonth() === ref.getMonth() &&
-    d.getDate() === ref.getDate()
-  );
-};
-
-export default function EmployeeJobs() {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>("today");
-
-  const myJobs: Job[] = mockJobs.filter((job) => job.employeeId === "e1");
-  const now = new Date();
-
-  const todayJobs = myJobs.filter(
-    (job) =>
-      job.startTime &&
-      isSameDay(job.startTime, now) &&
-      (job.state === "SCHEDULE_CONFIRMED" || job.state === "IN_PROGRESS" || job.state === "COMPLETED")
-  );
-
-  const upcomingJobs = myJobs
-    .filter(
-      (job) =>
-        job.state === "SCHEDULE_CONFIRMED" &&
-        job.startTime &&
-        new Date(job.startTime) > now &&
-        !isSameDay(job.startTime, now)
-    )
-    .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime());
-
-  const historyJobs = myJobs
-    .filter((job) => job.state === "COMPLETED")
-    .sort((a, b) => new Date(b.startTime ?? 0).getTime() - new Date(a.startTime ?? 0).getTime());
-
-  const buckets: Record<Tab, Job[]> = {
-    today: todayJobs,
-    upcoming: upcomingJobs,
-    history: historyJobs,
-  };
-
-  const counts: Record<Tab, number> = {
-    today: todayJobs.length,
-    upcoming: upcomingJobs.length,
-    history: historyJobs.length,
-  };
-
-  const list = buckets[tab];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="sf-display text-2xl font-bold">My Day</h1>
-        <p className="text-sm text-text-secondary mt-1">Your assigned jobs, grouped by when they happen.</p>
-      </div>
-
-      <div className="flex gap-1 border-b border-line">
-        {(["today", "upcoming", "history"] as const).map((t) => {
-          const active = tab === t;
-          return (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-pressed={active}
-              className={`relative px-4 py-2 text-sm font-medium capitalize transition-colors ${
-                active ? "border-b-2 border-graphite text-graphite" : "text-text-secondary hover:text-graphite"
-              }`}
-            >
-              {t}
-              {counts[t] > 0 && (
-                <span
-                  className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] ${
-                    active ? "bg-graphite text-white" : "bg-paper text-text-secondary"
-                  }`}
-                >
-                  {counts[t]}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {list.length === 0 ? (
-        <EmptyState
-          title={`No ${tab} jobs`}
-          description={
-            tab === "today"
-              ? "No jobs scheduled for today."
-              : tab === "upcoming"
-                ? "No upcoming jobs assigned yet."
-                : "Completed jobs will appear here."
-          }
-        />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {list.map((job) => (
-            <div key={job.id} onClick={() => navigate(`/employee/jobs/${job.id}`)} style={{ cursor: "pointer" }}>
-              <JobTicketCard
-                id={job.id}
-                title={job.serviceName}
-                status={jobStatus(job.state)}
-                client={job.clientName}
-                schedule={formatSlot(job.startTime)}
-                employee={job.employeeName ?? "Unassigned"}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+  return <>
+    <PageHeader title="Jobs" description="All jobs for your company." />
+    <div className="mb-5 max-w-xs">
+      <SelectField label="Filter by status" value={status} onChange={e => setStatus(e.target.value)}>
+        {STATUS_FILTERS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </SelectField>
     </div>
-  );
+
+    <Resource {...jobs} retry={jobs.reload}>
+      {jobs.data && jobs.data.items.length === 0
+        ? <EmptyState title="No jobs" description={status ? 'No jobs with this status.' : 'Approved quotations create jobs automatically.'} />
+        : <div className="space-y-2">{jobs.data?.items.map(j => (
+            <SurfaceCard key={j.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="sf-mono text-xs text-text-secondary">Job #{j.id}</span>
+                  <RecordStatus status={j.status} />
+                </div>
+                <p className="mt-1 text-sm">
+                  Request #{j.request_id}
+                  {j.schedule_date && ` · ${j.schedule_date}${j.schedule_time ? ` ${j.schedule_time.slice(0, 5)}` : ''}`}
+                </p>
+                <p className="text-xs text-text-secondary">
+                  {j.assigned_user_id ? `Assigned to employee #${j.assigned_user_id}` : 'Not assigned'}
+                  {j.completed_at && ` · Completed ${dateTime(j.completed_at)}`}
+                  {j.cancelled_at && ` · Cancelled ${dateTime(j.cancelled_at)}`}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {['JOB_CREATED', 'SCHEDULE_PROPOSED'].includes(j.status) && (
+                  <ActionButton variant="stub" size="small" onClick={() => navigate('/manager/schedule')}>
+                    Schedule
+                  </ActionButton>
+                )}
+                {['JOB_CREATED', 'SCHEDULE_PROPOSED', 'SCHEDULE_CONFIRMED'].includes(j.status) && (
+                  <ActionButton variant="void" size="small" onClick={() => setCancelling(j)}>Cancel</ActionButton>
+                )}
+              </div>
+            </SurfaceCard>
+          ))}</div>}
+    </Resource>
+
+    <Modal open={!!cancelling} title="Cancel this job?" onClose={() => setCancelling(null)}>
+      {cancelling && <CancelJob
+        job={cancelling}
+        onDone={() => { setCancelling(null); jobs.reload() }}
+        onCancel={() => setCancelling(null)}
+      />}
+    </Modal>
+  </>
+}
+
+function CancelJob({ job, onDone, onCancel }: {
+  job: JobRow
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); if (pending || !reason.trim()) return
+    setPending(true); setError('')
+    try {
+      await providerService.cancelJob(job.id, reason.trim())
+      onDone()
+    } catch (c) { setError((c as Error).message) } finally { setPending(false) }
+  }
+
+  return <form onSubmit={submit} className="space-y-4">
+    <p className="text-sm">Job #{job.id} will be cancelled. The employee will no longer see it in My Day.</p>
+    <TextAreaField label="Reason for cancellation" value={reason} onChange={e => setReason(e.target.value)} required minLength={3} />
+    {error && <Notice error>{error}</Notice>}
+    <div className="flex justify-end gap-2">
+      <ActionButton type="button" onClick={onCancel}>Keep job</ActionButton>
+      <ActionButton type="submit" variant="void" disabled={pending || reason.trim().length < 3}>
+        {pending ? 'Cancelling…' : 'Cancel job'}
+      </ActionButton>
+    </div>
+  </form>
 }

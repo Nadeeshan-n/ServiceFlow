@@ -98,9 +98,10 @@ export const providerService = {
   getJob: (id: number) => api<JobDetailRow>(`/jobs/${id}`),
   assignEmployee: (jobId: number, employeeId: number) =>
     api<JobRow>(`/jobs/${jobId}/assign`, 'POST', { employee_id: employeeId }),
-  proposeSchedule: (jobId: number, schedule_date: string, schedule_time: string) =>
+    proposeSchedule: (jobId: number, schedule_date: string, schedule_time: string) =>
     api<JobRow>(`/jobs/${jobId}/schedule`, 'POST', { schedule_date, schedule_time }),
-
+    cancelJob: (jobId: number, reason: string) =>
+    api<JobRow>(`/jobs/${jobId}/cancel`, 'POST', { reason }),
   // ---- Employees ----
   listEmployees: () => api<EmployeeRow[]>('/company/employees'),
 

@@ -170,3 +170,19 @@ export type EmployeeUpdateInput = {
   email?: string | null
   status?: 'ACTIVE' | 'INACTIVE' | null
 }
+
+
+export type SkillRow = { id: number; user_id: number; skill_name: string }
+
+export type JobRecordRow = {
+  id: number
+  job_id: number
+  record_type: string
+  note: string | null
+  material_name: string | null
+  quantity: string | null
+  unit: string | null
+  file_name: string | null
+  content_type: string | null
+  created_at: string
+}

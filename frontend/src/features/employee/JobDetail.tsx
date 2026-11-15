@@ -1,138 +1,174 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ActionButton, JobTicketCard, Modal, TextAreaField } from "../../components";
-import { mockJobs, type Job, type JobState } from "../../mocks/data";
-
-const jobStatus = (s: JobState): "awaiting" | "scheduled" | "in_progress" | "completed" => {
-  if (s === "JOB_CREATED") return "awaiting";
-  if (s === "SCHEDULE_PROPOSED") return "awaiting";
-  if (s === "SCHEDULE_CONFIRMED") return "scheduled";
-  if (s === "IN_PROGRESS") return "in_progress";
-  return "completed";
-};
-
-const formatSlot = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleString("en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "Not scheduled";
+import { useState, type FormEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import {
+  ActionButton, Modal, SurfaceCard, TextAreaField, TextField,
+} from '../../components'
+import { Notice, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
+import { employeeService } from '../../lib/employee-service'
 
 export default function EmployeeJobDetail() {
-  const { jobId } = useParams();
-  const navigate = useNavigate();
+  const { jobId } = useParams<{ jobId: string }>()
+  const id = Number(jobId)
+  const navigate = useNavigate()
+  if (!id || Number.isNaN(id)) return <p className="p-6">Invalid job.</p>
 
-  const initialJob = mockJobs.find((job) => job.id === jobId);
-  const [job, setJob] = useState<Job | undefined>(initialJob);
-  const [error, setError] = useState<string | null>(null);
-  const [completing, setCompleting] = useState(false);
-  const [notes, setNotes] = useState("");
+  const job = useResource(() => employeeService.getJob(id), [id])
+  const [adding, setAdding] = useState<'NOTE' | 'MATERIAL' | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [pending, setPending] = useState<'start' | 'complete' | null>(null)
+  const [error, setError] = useState('')
 
-  if (!job) {
-    return <p className="p-6">Job not found</p>;
+  async function start() {
+    setPending('start'); setError('')
+    try { await employeeService.startJob(id); job.reload() }
+    catch (c) { setError((c as Error).message) } finally { setPending(null) }
+  }
+  async function complete() {
+    setPending('complete'); setError('')
+    try {
+      await employeeService.completeJob(id)
+      setConfirming(false); job.reload()
+      setTimeout(() => navigate('/employee/jobs'), 800)
+    } catch (c) { setError((c as Error).message) } finally { setPending(null) }
   }
 
-  const now = new Date();
-  const scheduled = job.startTime ? new Date(job.startTime) : null;
-  const canStart = job.state === "SCHEDULE_CONFIRMED" && !!scheduled && now >= scheduled;
-  const canComplete = job.state === "IN_PROGRESS";
-
-  const start = () => {
-    if (!canStart) {
-      setError("You cannot start before the scheduled time.");
-      return;
-    }
-    setJob({ ...job, state: "IN_PROGRESS" });
-    setError(null);
-  };
-
-  const complete = () => {
-    if (!canComplete) {
-      setError("Start the job first.");
-      return;
-    }
-    setJob({ ...job, state: "COMPLETED" });
-    setCompleting(false);
-    setError(null);
-    setTimeout(() => navigate("/employee/jobs"), 800);
-  };
-
-  return (
-    <div className="max-w-xl mx-auto space-y-4">
-      <ActionButton variant="ghost" onClick={() => navigate(-1)}>
-        ← Back to jobs
-      </ActionButton>
-
-      <JobTicketCard
-        id={job.id}
-        title={job.serviceName}
-        status={jobStatus(job.state)}
-        client={job.clientName}
-        schedule={formatSlot(job.startTime)}
-        employee={job.employeeName ?? "Unassigned"}
-      >
-        {error && (
-          <p className="mb-3 text-sm" style={{ color: "#B93832" }}>
-            {error}
-          </p>
-        )}
-
-        {job.state === "SCHEDULE_CONFIRMED" && (
-          <ActionButton
-            variant="stamp"
-            onClick={start}
-            disabled={!canStart}
-            title={!canStart ? "Available at scheduled time" : "Start job"}
-          >
-            {canStart ? "Start job" : "Start (available at scheduled time)"}
-          </ActionButton>
-        )}
-
-        {job.state === "IN_PROGRESS" && (
-          <ActionButton variant="stamp" onClick={() => setCompleting(true)}>
-            Complete job
-          </ActionButton>
-        )}
-
-        {job.state === "COMPLETED" && (
-          <p style={{ color: "var(--sf-success)" }}>
-            Job completed. Invoice has been issued for the manager to record payment.
-          </p>
-        )}
-
-        {job.state === "JOB_CREATED" && (
-          <p className="text-sm text-text-secondary">
-            Waiting for manager to schedule this job.
-          </p>
-        )}
-      </JobTicketCard>
-
-      <Modal
-        open={completing}
-        title="Complete this job?"
-        description="This locks the job and creates an invoice. You cannot undo this."
-        onClose={() => setCompleting(false)}
-      >
-        <div className="space-y-4">
-          <TextAreaField
-            label="Completion notes (optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-          <div className="flex justify-end gap-2">
-            <ActionButton variant="stub" onClick={() => setCompleting(false)}>
-              Cancel
-            </ActionButton>
-            <ActionButton variant="stamp" onClick={complete}>
-              Complete job
-            </ActionButton>
+  return <div className="mx-auto max-w-2xl space-y-4">
+    <Link to="/employee/jobs" className="sf-link">← Back to My Day</Link>
+    <Resource {...job} retry={job.reload}>
+      {job.data && <>
+        <SurfaceCard className="space-y-3 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="sf-display text-xl font-semibold">Job #{job.data.id}</h1>
+            <RecordStatus status={job.data.status} />
           </div>
+          {job.data.schedule_date
+            ? <p className="text-sm">
+                Scheduled <strong>{job.data.schedule_date} {job.data.schedule_time?.slice(0, 5)}</strong>
+                {' · '}<span className="text-text-secondary">{job.data.schedule_status}</span>
+              </p>
+            : <Notice>Not scheduled yet.</Notice>}
+          {job.data.completed_at && (
+            <p className="text-sm text-text-secondary">Completed {dateTime(job.data.completed_at)}</p>
+          )}
+        </SurfaceCard>
+
+        {error && <Notice error>{error}</Notice>}
+
+        <div className="flex flex-wrap gap-2">
+          {job.data.status === 'SCHEDULE_CONFIRMED' && (
+            <ActionButton variant="stamp" onClick={start} disabled={pending === 'start'}>
+              {pending === 'start' ? 'Starting…' : 'Start job'}
+            </ActionButton>
+          )}
+          {job.data.status === 'IN_PROGRESS' && (
+            <ActionButton variant="stamp" onClick={() => setConfirming(true)}>Complete job</ActionButton>
+          )}
+          {job.data.status === 'JOB_CREATED' && (
+            <Notice>Waiting for the schedule to be confirmed.</Notice>
+          )}
+          {['COMPLETED', 'CANCELLED'].includes(job.data.status) && (
+            <Notice>This job is {job.data.status.toLowerCase()}.</Notice>
+          )}
         </div>
-      </Modal>
+
+        <SurfaceCard className="space-y-3 p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Work log</h2>
+            <div className="flex gap-2">
+              <ActionButton variant="stub" size="small" onClick={() => setAdding('NOTE')}>+ Note</ActionButton>
+              <ActionButton variant="stub" size="small" onClick={() => setAdding('MATERIAL')}>+ Material</ActionButton>
+            </div>
+          </div>
+          {job.data.records.length === 0
+            ? <p className="text-sm text-text-secondary">No records yet.</p>
+            : <ul className="divide-y divide-line">
+                {job.data.records.map(r => (
+                  <li key={r.id} className="py-2">
+                    <div className="flex justify-between text-xs text-text-secondary">
+                      <span>{r.record_type}</span>
+                      <span>{dateTime(r.created_at)}</span>
+                    </div>
+                    {r.note && <p className="mt-1 whitespace-pre-wrap text-sm">{r.note}</p>}
+                    {r.material_name && (
+                      <p className="mt-1 text-sm">
+                        <strong>{r.material_name}</strong>
+                        {r.quantity && ` · ${r.quantity} ${r.unit ?? ''}`}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>}
+        </SurfaceCard>
+      </>}
+    </Resource>
+
+    <Modal open={adding !== null} title={adding === 'NOTE' ? 'Add note' : 'Add material'} onClose={() => setAdding(null)}>
+      {adding && <AddRecord
+        jobId={id}
+        type={adding}
+        onDone={() => { setAdding(null); job.reload() }}
+        onCancel={() => setAdding(null)}
+      />}
+    </Modal>
+
+    <Modal open={confirming} title="Complete this job?" onClose={() => setConfirming(false)}>
+      <p className="text-sm">Completing the job creates an invoice. This cannot be undone.</p>
+      {error && <div className="mt-3"><Notice error>{error}</Notice></div>}
+      <div className="mt-4 flex justify-end gap-2">
+        <ActionButton onClick={() => setConfirming(false)}>Cancel</ActionButton>
+        <ActionButton variant="stamp" onClick={complete} disabled={pending === 'complete'}>
+          {pending === 'complete' ? 'Completing…' : 'Complete job'}
+        </ActionButton>
+      </div>
+    </Modal>
+  </div>
+}
+
+function AddRecord({ jobId, type, onDone, onCancel }: {
+  jobId: number
+  type: 'NOTE' | 'MATERIAL'
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const [note, setNote] = useState('')
+  const [materialName, setMaterialName] = useState('')
+  const [quantity, setQuantity] = useState('')
+  const [unit, setUnit] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e: FormEvent) {
+    e.preventDefault(); if (pending) return
+    setPending(true); setError('')
+    try {
+      if (type === 'NOTE') {
+        await employeeService.createRecord(jobId, { record_type: 'NOTE', note: note.trim() })
+      } else {
+        await employeeService.createRecord(jobId, {
+          record_type: 'MATERIAL',
+          material_name: materialName.trim(),
+          quantity: quantity ? Number(quantity) : undefined,
+          unit: unit.trim() || undefined,
+        })
+      }
+      onDone()
+    } catch (c) { setError((c as Error).message) } finally { setPending(false) }
+  }
+
+  return <form onSubmit={submit} className="space-y-4">
+    {type === 'NOTE'
+      ? <TextAreaField label="Note" value={note} onChange={e => setNote(e.target.value)} required />
+      : <>
+          <TextField label="Material name" value={materialName} onChange={e => setMaterialName(e.target.value)} required maxLength={150} />
+          <div className="grid grid-cols-2 gap-3">
+            <TextField label="Quantity" type="number" min={0} step="0.01" value={quantity} onChange={e => setQuantity(e.target.value)} />
+            <TextField label="Unit" value={unit} onChange={e => setUnit(e.target.value)} maxLength={30} placeholder="e.g. pcs, m" />
+          </div>
+        </>}
+    {error && <Notice error>{error}</Notice>}
+    <div className="flex justify-end gap-2">
+      <ActionButton type="button" onClick={onCancel}>Cancel</ActionButton>
+      <ActionButton type="submit" variant="stamp" disabled={pending}>{pending ? 'Saving…' : 'Save'}</ActionButton>
     </div>
-  );
+  </form>
 }
