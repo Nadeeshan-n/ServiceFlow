@@ -2,9 +2,13 @@
 
 This service runs inside Docker Compose without a published port. It uses
 `serviceflow_ro` and accepts only a short-lived backend-issued bearer token.
-`probe_policy_access` counts active public policies for the verified provider;
-the tool takes no provider identifier argument. Document search and business
-data tools follow in phases 2 and 3.
+`probe_policy_access` counts active public policies for the verified provider.
+`search_policy_docs(query, top_k)` returns fused vector and keyword matches
+with document name, section, page, chunk ID, and policy ID. Both tools derive
+their provider from the verified token; neither accepts a provider argument.
+The search uses the same `all-MiniLM-L6-v2` normalized, 384-dimensional
+embeddings as ingestion. The Docker image includes the model for offline
+runtime use. Business data tools follow in phase 3.
 
 ## One-time role setup (existing database volume)
 
@@ -37,3 +41,9 @@ purpose, and gets the provider from the verified token claims.
 Direct Inspector calls require a valid internal token. Never pass a browser
 JWT or choose a provider ID from an AI prompt. The probe runs an explicit
 read-only transaction; the database role also has no write grants.
+
+After changing `mcp_server/`, rebuild with `docker compose up --build -d mcp`
+from the `docker` directory, or use `docker compose --env-file .\docker\.env
+-f .\docker\docker-compose.yml up --build -d mcp` from the repo root. Run
+`python -m unittest mcp_server.test_auth mcp_server.test_policy_search -v`
+from the repo root before building.

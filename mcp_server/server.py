@@ -1,11 +1,14 @@
 """Internal, authenticated, read-only MCP access to ServiceFlow data."""
 
 import os
+from functools import lru_cache
 
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.dependencies import get_access_token
 from sqlalchemy import URL, create_engine, text
+
+from mcp_server.policy_search import search
 
 
 def required(name: str) -> str:
@@ -50,6 +53,19 @@ def caller_provider_id() -> int:
     return provider_id
 
 
+@lru_cache(maxsize=1)
+def embedding_model():
+    from sentence_transformers import SentenceTransformer
+
+    return SentenceTransformer(os.environ.get(
+        "MCP_EMBEDDING_MODEL_PATH", "sentence-transformers/all-MiniLM-L6-v2"
+    ))
+
+
+def encode_question(question: str) -> list[float]:
+    return embedding_model().encode(question, normalize_embeddings=True).tolist()
+
+
 @mcp.tool
 def probe_policy_access() -> dict[str, int]:
     """Count the caller's active public policies to check scoped DB access."""
@@ -65,6 +81,15 @@ def probe_policy_access() -> dict[str, int]:
             {"provider_id": provider_id},
         ).scalar_one()
     return {"active_public_policies": count}
+
+
+@mcp.tool
+def search_policy_docs(query: str, top_k: int = 5) -> list[dict]:
+    """Find cited chunks in this provider's ACTIVE, PUBLIC policy PDFs."""
+    provider_id = caller_provider_id()
+    with engine.connect() as connection:
+        connection.execute(text("SET TRANSACTION READ ONLY"))
+        return search(connection, provider_id, query, top_k, encode_question)
 
 
 if __name__ == "__main__":

@@ -2,3 +2,4 @@ fastmcp>=4.2,<5
 psycopg[binary]>=3.2,<4
 SQLAlchemy>=2.0,<3
 PyJWT>=2.8,<3
+sentence-transformers>=3,<6
