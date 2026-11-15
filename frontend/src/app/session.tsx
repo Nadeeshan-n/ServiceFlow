@@ -16,7 +16,24 @@ const SessionContext = createContext<SessionContextValue>({
 })
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  //const [user, setUser] = useState<User | null>(null)
+  
+  //bypass teh login for demo purposes
+  const [user, setUser] = useState<User | null>(() => {
+  const bypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+  if (!bypass) return null;
+  return {
+    id: 'dev-user',
+    name: 'Dev User',
+    email: 'dev@test.com',
+    role: 'manager',
+    email_verified: true,
+    must_change_password: false,
+    company_status: 'APPROVED',
+  } as User;
+})
+  
+  
   const [logoutAccount, setLogoutAccount] = useState<string | null>(null)
   const navigate = useNavigate()
 
