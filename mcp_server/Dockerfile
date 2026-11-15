@@ -9,6 +9,7 @@ COPY mcp_server/ ./mcp_server/
 
 RUN useradd --system --uid 10001 mcpuser
 ENV MCP_EMBEDDING_MODEL_PATH=/srv/embedding-model
+RUN chmod -R a+rX /srv/embedding-model
 USER mcpuser
 
 CMD ["python", "-m", "mcp_server.server"]

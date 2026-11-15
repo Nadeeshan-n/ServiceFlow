@@ -9,6 +9,7 @@ from fastmcp.server.dependencies import get_access_token
 from sqlalchemy import URL, create_engine, text
 
 from mcp_server.policy_search import search
+from mcp_server.business_data import read_rows
 
 
 def required(name: str) -> str:
@@ -90,6 +91,45 @@ def search_policy_docs(query: str, top_k: int = 5) -> list[dict]:
     with engine.connect() as connection:
         connection.execute(text("SET TRANSACTION READ ONLY"))
         return search(connection, provider_id, query, top_k, encode_question)
+
+
+def _business_tool(source: str, status: str | None, start_date: str | None,
+                   end_date: str | None, limit: int, date_basis: str = "created") -> dict:
+    provider_id = caller_provider_id()
+    with engine.connect() as connection:
+        connection.execute(text("SET TRANSACTION READ ONLY"))
+        return read_rows(connection, source, provider_id, status=status,
+                         start_date=start_date, end_date=end_date,
+                         limit=limit, date_basis=date_basis)
+
+
+@mcp.tool
+def get_requests(status: str | None = None, start_date: str | None = None,
+                 end_date: str | None = None, limit: int = 20) -> dict:
+    """Read the provider's requests. Dates filter creation time (UTC)."""
+    return _business_tool("requests", status, start_date, end_date, limit)
+
+
+@mcp.tool
+def get_quotations(status: str | None = None, start_date: str | None = None,
+                   end_date: str | None = None, limit: int = 20) -> dict:
+    """Read the provider's quotations. Dates filter creation time (UTC)."""
+    return _business_tool("quotations", status, start_date, end_date, limit)
+
+
+@mcp.tool
+def get_jobs(status: str | None = None, start_date: str | None = None,
+             end_date: str | None = None, limit: int = 20,
+             date_basis: str = "created") -> dict:
+    """Read jobs; use date_basis='completed' for completed-in-period questions."""
+    return _business_tool("jobs", status, start_date, end_date, limit, date_basis)
+
+
+@mcp.tool
+def get_unpaid_invoices(status: str | None = None, start_date: str | None = None,
+                        end_date: str | None = None, limit: int = 20) -> dict:
+    """Read unpaid or partially paid invoices, filtered by issue date (UTC)."""
+    return _business_tool("unpaid_invoices", status, start_date, end_date, limit)
 
 
 if __name__ == "__main__":

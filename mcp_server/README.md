@@ -8,7 +8,12 @@ with document name, section, page, chunk ID, and policy ID. Both tools derive
 their provider from the verified token; neither accepts a provider argument.
 The search uses the same `all-MiniLM-L6-v2` normalized, 384-dimensional
 embeddings as ingestion. The Docker image includes the model for offline
-runtime use. Business data tools follow in phase 3.
+runtime use. `get_requests`, `get_quotations`, `get_jobs`, and
+`get_unpaid_invoices` return bounded, provider-scoped business records and an
+exact `total_count` for the selected date range. Dates use UTC and default to
+the past 90 days; a requested range may span at most 366 days. `get_jobs` can
+filter by completion date for completed-in-period questions. Returned rows
+contain no customer address, message, or description fields.
 
 ## One-time role setup (existing database volume)
 
@@ -45,5 +50,6 @@ read-only transaction; the database role also has no write grants.
 After changing `mcp_server/`, rebuild with `docker compose up --build -d mcp`
 from the `docker` directory, or use `docker compose --env-file .\docker\.env
 -f .\docker\docker-compose.yml up --build -d mcp` from the repo root. Run
-`python -m unittest mcp_server.test_auth mcp_server.test_policy_search -v`
+`python -m unittest mcp_server.test_auth mcp_server.test_policy_search
+mcp_server.test_business_data -v`
 from the repo root before building.
