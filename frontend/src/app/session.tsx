@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { clientService } from '../lib/client-service'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ActionButton, Modal } from '../components'
 import { setAccessToken } from '../lib/api'
@@ -16,26 +17,29 @@ const SessionContext = createContext<SessionContextValue>({
 })
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  //const [user, setUser] = useState<User | null>(null)
-  
-  //bypass teh login for demo purposes
+  //bypass the login for demo purposes
   const [user, setUser] = useState<User | null>(() => {
-  const bypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
-  if (!bypass) return null;
-  return {
-    id: 'dev-user',
-    name: 'Dev User',
-    email: 'dev@test.com',
-    role: 'manager',
-    email_verified: true,
-    must_change_password: false,
-    company_status: 'APPROVED',
-  } as User;
-})
-  
-  
+    const bypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+    if (!bypass) return null;
+    return {
+      id: 'dev-user',
+      name: 'Dev User',
+      email: 'dev@test.com',
+      role: 'manager',
+      email_verified: true,
+      must_change_password: false,
+      company_status: 'APPROVED',
+    } as User;
+  })
+
   const [logoutAccount, setLogoutAccount] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user) return
+    clientService.me().then(setUser).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function signOut() {
     setAccessToken(null)
