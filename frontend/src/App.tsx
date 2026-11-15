@@ -61,6 +61,7 @@ import EmployeeJobDetail from "./features/employee/JobDetail";
 import AdminCompanies from "./features/admin/Companies";
 import AdminCatalog from "./features/admin/Catalog";
 import "./styles/client.css";
+import ManagerDisputes from "./features/manager/Disputes";
 
 type Role = "manager" | "employee" | "admin";
 
@@ -172,7 +173,8 @@ export default function App() {
         <Route path="/admin/requests" element={<RoleGuard role="admin"><Shell role="admin"><AdminAllRequestsJobs /></Shell></RoleGuard>} />
         <Route path="/admin/disputes" element={<RoleGuard role="admin"><Shell role="admin"><AdminDisputes /></Shell></RoleGuard>} />
         <Route path="/admin/settings" element={<RoleGuard role="admin"><Shell role="admin"><AdminSettingsPlaceholder /></Shell></RoleGuard>} />
-      </Routes>
+        <Route path="/manager/disputes" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDisputes /></Shell></RoleGuard>} />
+     </Routes>
     </SessionProvider>
   </BrowserRouter>
 }

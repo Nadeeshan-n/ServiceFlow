@@ -203,4 +203,11 @@ export const providerService = {
   },
 
 
+
+    // ---- Disputes (provider side) ----
+  listMyDisputes: () => api<DisputeRow[]>('/disputes/mine'),
+  createJobDispute: (jobId: number, body: { reason: string; description: string }) =>
+    api<DisputeRow>(`/jobs/${jobId}/disputes`, 'POST', body),
+
+
 }
