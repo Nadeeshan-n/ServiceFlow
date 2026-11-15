@@ -148,7 +148,14 @@ export const roleNav: Record<'client'|'manager'|'employee'|'admin',NavItem[]> = 
     {label:'Flow AI',href:'/manager/ai',icon:'ai'},
   ],
   employee:[{label:'Dashboard',href:'/employee',icon:'dashboard'},{label:'Jobs',href:'/employee/jobs',icon:'jobs'},{label:'Schedule',href:'/employee/schedule',icon:'schedule'}],
-  admin:[{label:'Dashboard',href:'/admin',icon:'dashboard'},{label:'Company',href:'/admin/companies',icon:'company'},{label:'Settings',href:'/admin/settings',icon:'settings'}]
+ // admin:[{label:'Dashboard',href:'/admin',icon:'dashboard'},{label:'Company',href:'/admin/companies',icon:'company'},{label:'Settings',href:'/admin/settings',icon:'settings'}]
+  admin:[
+  {label:'Dashboard',href:'/admin',icon:'dashboard'},
+  {label:'Verification',href:'/admin/companies',icon:'company'},
+  {label:'Catalog',href:'/admin/catalog',icon:'categories'},
+  {label:'Disputes',href:'/admin/disputes',icon:'requests'},
+  {label:'Settings',href:'/admin/settings',icon:'settings'},
+]
 }
 export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate }: {
   items:NavItem[];activeHref:string;userName:string;subtitle:string;onNavigate?:(href:string)=>void

@@ -202,3 +202,16 @@ export type AdminProviderRow = {
 }
 
 export type ProviderActionResponse = { message: string; provider: AdminProviderRow }
+
+
+export type DisputeRow = {
+  id: number
+  job_id: number
+  opened_by: number
+  reason: string
+  description: string
+  status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'CLOSED'
+  admin_note: string | null
+  created_at: string
+  closed_at: string | null
+}

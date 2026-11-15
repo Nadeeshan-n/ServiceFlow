@@ -7,6 +7,7 @@ import type {
   JobRow, JobDetailRow, EmployeeRow, 
   EmployeeCreateResponse, EmployeeUpdateInput,
   AdminProviderRow, ProviderActionResponse,
+  DisputeRow,
 } from '../types/provider'
 
 export const providerService = {
@@ -157,6 +158,16 @@ export const providerService = {
     api<CatalogService>(`/admin/services/${id}`, 'PATCH', body),
   adminDeactivateService: (id: number) =>
     api<CatalogService>(`/admin/services/${id}/deactivate`, 'POST'),
+
+
+
+    // ---- Admin: disputes ----
+  adminListDisputes: () =>
+    api<DisputeRow[]>('/admin/disputes'),
+  adminUpdateDispute: (id: number, body: { status: DisputeRow['status']; admin_note?: string | null }) =>
+    api<DisputeRow>(`/admin/disputes/${id}`, 'PATCH', body),
+
+
 
 
 

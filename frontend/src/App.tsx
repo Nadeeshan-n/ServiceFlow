@@ -58,13 +58,16 @@ import EmployeeJobDetail from "./features/employee/JobDetail";
 import AdminCompanies from "./features/admin/Companies";
 import AdminCatalog from "./features/admin/Catalog";
 import "./styles/client.css";
+import AdminDashboard from "./features/admin/Dashboard";
+import AdminDisputes from "./features/admin/Disputes";
 
 type Role = "manager" | "employee" | "admin";
 
 const EmployeeHome = () => <h1>EmployeeHome</h1>;
 
 const EmployeeSchedule = () => <h1>EmployeeSchedule</h1>;
-const AdminHome = () => <h1>AdminHome</h1>;
+
+//removed - const AdminHome = () => <h1>AdminHome</h1>;
 
 const AdminSettings = () => <h1>AdminSettings</h1>;
 
@@ -159,10 +162,15 @@ export default function App() {
         <Route path="/employee/jobs/:jobId" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobDetail /></Shell></RoleGuard>} />
         <Route path="/employee/schedule" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeSchedule /></Shell></RoleGuard>} />
 
-        <Route path="/admin" element={<RoleGuard role="admin"><Shell role="admin"><AdminHome /></Shell></RoleGuard>} />
         <Route path="/admin/companies" element={<RoleGuard role="admin"><Shell role="admin"><AdminCompanies /></Shell></RoleGuard>} />
         <Route path="/admin/catalog" element={<RoleGuard role="admin"><Shell role="admin"><AdminCatalog /></Shell></RoleGuard>} />
         <Route path="/admin/settings" element={<RoleGuard role="admin"><Shell role="admin"><AdminSettings /></Shell></RoleGuard>} />
+        
+        <Route path="/admin" element={<RoleGuard role="admin"><Shell role="admin"><AdminDashboard /></Shell></RoleGuard>} />
+        <Route path="/admin/disputes" element={<RoleGuard role="admin"><Shell role="admin"><AdminDisputes /></Shell></RoleGuard>} />
+        
+      
+      
       </Routes>
     </SessionProvider>
   </BrowserRouter>
