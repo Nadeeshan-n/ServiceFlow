@@ -4,7 +4,8 @@ import type {
   ServiceArea, WorkingHour,
   RequestRow, RequestMessage, QuotationItem, QuotationRow,
   InvoiceRow, PaymentRow,
-  JobRow, JobDetailRow, EmployeeRow,
+  JobRow, JobDetailRow, EmployeeRow, 
+  EmployeeCreateResponse, EmployeeUpdateInput,
 } from '../types/provider'
 
 export const providerService = {
@@ -103,6 +104,11 @@ export const providerService = {
   // ---- Employees ----
   listEmployees: () => api<EmployeeRow[]>('/company/employees'),
 
+  createEmployee: (body: { name: string; email: string; phone: string }) =>
+  api<EmployeeCreateResponse>('/company/employees', 'POST', body),
+  updateEmployee: (id: number, body: EmployeeUpdateInput) =>
+  api<EmployeeRow>(`/company/employees/${id}`, 'PATCH', body),
+
   // ---- Invoices ----
   listInvoices: () =>
     api<{ items: InvoiceRow[]; total: number; limit: number; offset: number }>('/invoices'),
@@ -126,4 +132,7 @@ export const providerService = {
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     URL.revokeObjectURL(url)
   },
+
+  
+
 }

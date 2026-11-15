@@ -163,3 +163,10 @@ export type EmployeeRow = {
   status: string
   must_change_password: boolean
 }
+
+export type EmployeeCreateResponse = EmployeeRow & { initial_password: string }
+
+export type EmployeeUpdateInput = {
+  email?: string | null
+  status?: 'ACTIVE' | 'INACTIVE' | null
+}
