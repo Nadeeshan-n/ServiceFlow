@@ -21,8 +21,8 @@ from app.services.working_hour_service import (
 )
 from app.schemas.service_area import (
     ServiceAreaCreate,
-    ServiceAreaListResponse,
     ServiceAreaResponse,
+    ServiceAreasResponse,
 )
 
 from app.services.provider_area_service import (
@@ -170,7 +170,7 @@ def update_my_working_hours(
 
 @router.get(
     "/me/service-areas",
-    response_model=ServiceAreaListResponse,
+    response_model=ServiceAreasResponse,
 )
 def read_my_service_areas(
     current_user: User = Depends(get_current_user),

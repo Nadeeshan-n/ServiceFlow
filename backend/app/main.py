@@ -23,7 +23,6 @@ from app.api.routes.invoices import router as invoices_router
 from app.api.routes.payments import router as payments_router
 from app.api.routes.notifications import router as notifications_router
 
-
 app = FastAPI(
     title="ServiceFlow API",
     version="0.1.0",
@@ -63,7 +62,6 @@ app.include_router(invoices_router)
 app.include_router(payments_router)
 app.include_router(admin_providers_router)
 app.include_router(notifications_router)
-
 
 
 @app.get("/health", tags=["Health"])

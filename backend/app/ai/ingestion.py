@@ -81,7 +81,7 @@ def extract_policy_chunks(
                     add_section(page_number, title, section_lines)
                     title = line
                     section_lines = []
-                elif title is not None:
+                else:
                     section_lines.append(line)
 
             add_section(page_number, title, section_lines)
