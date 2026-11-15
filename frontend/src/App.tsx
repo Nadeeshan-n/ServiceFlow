@@ -6,6 +6,7 @@ import {
   Routes,
   Route,
   Link,
+  Navigate,
   useParams,
   useLocation,
   useNavigate,
@@ -24,7 +25,7 @@ import {
 } from "./components";
 import { Notice, PageHeader } from "./components/client-shared";
 import { ClientShell } from "./components/layout/ClientShell";
-import { ClientGuard, SessionProvider } from "./app/session";
+import { ClientGuard, SessionProvider, destination } from "./app/session";
 import { DirectoryPage } from "./features/marketplace/DirectoryPage";
 import { LandingPage } from "./features/marketplace/LandingPage";
 import { CompanyPage } from "./features/marketplace/pages";
@@ -101,6 +102,16 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
   );
 }
 
+function RoleGuard({ role, children }: { role: Role; children: ReactNode }) {
+  const { user } = useSession()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.email_verified === false) return <Navigate to="/verify-email" replace />
+  if (user.must_change_password) return <Navigate to="/change-password" replace />
+  if (user.role !== role) return <Navigate to={destination(user)} replace />
+  if (role === 'manager' && user.company_status !== 'APPROVED') return <Navigate to="/pending-verification" replace />
+  return <>{children}</>
+}
+
 export default function App() {
   return <BrowserRouter>
     <SessionProvider>
@@ -131,25 +142,25 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        <Route path="/manager" element={<Shell role="manager"><ManagerDashboard /></Shell>} />
-        <Route path="/manager/requests" element={<Shell role="manager"><RequestInbox /></Shell>} />
-        <Route path="/manager/quotations/:requestId" element={<Shell role="manager"><QuoteBuilder /></Shell>} />
-        <Route path="/manager/jobs" element={<Shell role="manager"><ManagerJobs /></Shell>} />
-        <Route path="/manager/schedule" element={<Shell role="manager"><ManagerSchedule /></Shell>} />
-        <Route path="/manager/invoices" element={<Shell role="manager"><Invoices /></Shell>} />
-        <Route path="/manager/ai" element={<Shell role="manager"><PolicyPage /></Shell>} />
-        <Route path="/manager/company" element={<Shell role="manager"><CompanyProfilePage /></Shell>} />
-        <Route path="/manager/team" element={<Shell role="manager"><ManagerTeam /></Shell>} />
+        <Route path="/manager" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDashboard /></Shell></RoleGuard>} />
+        <Route path="/manager/requests" element={<RoleGuard role="manager"><Shell role="manager"><RequestInbox /></Shell></RoleGuard>} />
+        <Route path="/manager/quotations/:requestId" element={<RoleGuard role="manager"><Shell role="manager"><QuoteBuilder /></Shell></RoleGuard>} />
+        <Route path="/manager/jobs" element={<RoleGuard role="manager"><Shell role="manager"><ManagerJobs /></Shell></RoleGuard>} />
+        <Route path="/manager/schedule" element={<RoleGuard role="manager"><Shell role="manager"><ManagerSchedule /></Shell></RoleGuard>} />
+        <Route path="/manager/invoices" element={<RoleGuard role="manager"><Shell role="manager"><Invoices /></Shell></RoleGuard>} />
+        <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><PolicyPage /></Shell></RoleGuard>} />
+        <Route path="/manager/company" element={<RoleGuard role="manager"><Shell role="manager"><CompanyProfilePage /></Shell></RoleGuard>} />
+        <Route path="/manager/team" element={<RoleGuard role="manager"><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />
 
-        <Route path="/employee" element={<Shell role="employee"><EmployeeHome /></Shell>} />
-        <Route path="/employee/jobs" element={<Shell role="employee"><EmployeeJobs /></Shell>} />
-        <Route path="/employee/jobs/:jobId" element={<Shell role="employee"><EmployeeJobDetail /></Shell>} />
-        <Route path="/employee/schedule" element={<Shell role="employee"><EmployeeSchedule /></Shell>} />
+        <Route path="/employee" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeHome /></Shell></RoleGuard>} />
+        <Route path="/employee/jobs" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobs /></Shell></RoleGuard>} />
+        <Route path="/employee/jobs/:jobId" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobDetail /></Shell></RoleGuard>} />
+        <Route path="/employee/schedule" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeSchedule /></Shell></RoleGuard>} />
 
-        <Route path="/admin" element={<Shell role="admin"><AdminHome /></Shell>} />
-        <Route path="/admin/companies" element={<Shell role="admin"><AdminCompanies /></Shell>} />
-        <Route path="/admin/catalog" element={<Shell role="admin"><AdminCatalog /></Shell>} />
-        <Route path="/admin/settings" element={<Shell role="admin"><AdminSettings /></Shell>} />
+        <Route path="/admin" element={<RoleGuard role="admin"><Shell role="admin"><AdminHome /></Shell></RoleGuard>} />
+        <Route path="/admin/companies" element={<RoleGuard role="admin"><Shell role="admin"><AdminCompanies /></Shell></RoleGuard>} />
+        <Route path="/admin/catalog" element={<RoleGuard role="admin"><Shell role="admin"><AdminCatalog /></Shell></RoleGuard>} />
+        <Route path="/admin/settings" element={<RoleGuard role="admin"><Shell role="admin"><AdminSettings /></Shell></RoleGuard>} />
       </Routes>
     </SessionProvider>
   </BrowserRouter>
@@ -166,4 +177,3 @@ function CompanyRoute() {
 function NotFoundPage() {
   return <><PageHeader title="We couldn’t find that page" description="The link may have changed or the record may be unavailable." /><Link className="sf-link" to="/services">Browse services →</Link></>
 }
-
