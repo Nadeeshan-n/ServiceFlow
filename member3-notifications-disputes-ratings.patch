@@ -1,0 +1,816 @@
+diff --git a/backend/.env.example b/backend/.env.example
+new file mode 100644
+index 0000000..a8b9c73
+--- /dev/null
++++ b/backend/.env.example
+@@ -0,0 +1,20 @@
++# Copy this file to backend/.env and replace placeholder values.
++DB_HOST=127.0.0.1
++DB_PORT=5432
++DB_NAME=serviceflow
++DB_USER=serviceflow
++DB_PASSWORD=replace-with-local-database-password
++
++JWT_SECRET_KEY=replace-with-a-random-secret
++JWT_ALGORITHM=HS256
++ACCESS_TOKEN_EXPIRE_MINUTES=30
++
++GMAIL_SMTP_USER=your-account@example.com
++GMAIL_SMTP_APP_PASSWORD=replace-with-gmail-app-password
++FRONTEND_VERIFY_EMAIL_URL=http://localhost:5173/verify-email
++FRONTEND_RESET_PASSWORD_URL=http://localhost:5173/reset-password
++
++# Optional for Gemini generation. Set these in the process environment
++# when running generation directly.
++# GEMINI_API_KEY=
++# GEMINI_MODEL=
+diff --git a/backend/alembic/versions/9a84fc6bc751_add_dispute_final_status_and_active_index.py b/backend/alembic/versions/9a84fc6bc751_add_dispute_final_status_and_active_index.py
+new file mode 100644
+index 0000000..5696d42
+--- /dev/null
++++ b/backend/alembic/versions/9a84fc6bc751_add_dispute_final_status_and_active_index.py
+@@ -0,0 +1,43 @@
++"""Allow resolved disputes and enforce one active dispute per job."""
++
++from alembic import op
++from sqlalchemy import text
++
++
++revision = "9a84fc6bc751"
++down_revision = "c9f6a4b2e871"
++branch_labels = None
++depends_on = None
++
++
++def upgrade() -> None:
++    op.drop_constraint("ck_disputes_closed_at", "disputes", type_="check")
++    op.drop_constraint("ck_disputes_status", "disputes", type_="check")
++    op.create_check_constraint(
++        "ck_disputes_status", "disputes",
++        "status IN ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED')",
++    )
++    op.create_check_constraint(
++        "ck_disputes_closed_at", "disputes",
++        "(status IN ('RESOLVED', 'CLOSED') AND closed_at IS NOT NULL) OR "
++        "(status NOT IN ('RESOLVED', 'CLOSED') AND closed_at IS NULL)",
++    )
++    op.create_index(
++        "uq_disputes_active_job", "disputes", ["job_id"], unique=True,
++        postgresql_where=text("status IN ('OPEN', 'UNDER_REVIEW')"),
++    )
++
++
++def downgrade() -> None:
++    op.drop_index("uq_disputes_active_job", table_name="disputes")
++    op.execute("UPDATE disputes SET status = 'CLOSED' WHERE status = 'RESOLVED'")
++    op.drop_constraint("ck_disputes_closed_at", "disputes", type_="check")
++    op.drop_constraint("ck_disputes_status", "disputes", type_="check")
++    op.create_check_constraint(
++        "ck_disputes_status", "disputes", "status IN ('OPEN', 'UNDER_REVIEW', 'CLOSED')",
++    )
++    op.create_check_constraint(
++        "ck_disputes_closed_at", "disputes",
++        "(status = 'CLOSED' AND closed_at IS NOT NULL) OR "
++        "(status <> 'CLOSED' AND closed_at IS NULL)",
++    )
+diff --git a/backend/app/api/routes/disputes.py b/backend/app/api/routes/disputes.py
+new file mode 100644
+index 0000000..064a5a5
+--- /dev/null
++++ b/backend/app/api/routes/disputes.py
+@@ -0,0 +1,51 @@
++from typing import Annotated
++
++from fastapi import APIRouter, Depends, Path, Query
++from sqlalchemy.orm import Session
++
++from app.core.dependencies import get_current_user
++from app.core.permissions import require_roles
++from app.database import get_db
++from app.models.user import User
++from app.schemas.dispute import (
++    DisputeCreate,
++    DisputeResponse,
++    DisputeUpdate,
++    RatingCreate,
++    RatingResponse,
++)
++from app.services.dispute_service import list_disputes, open_dispute, rate_job, update_dispute
++
++
++router = APIRouter()
++DatabaseSession = Annotated[Session, Depends(get_db)]
++SignedIn = Annotated[User, Depends(get_current_user)]
++Admin = Annotated[User, Depends(require_roles("SYSTEM_ADMIN"))]
++ResourceId = Annotated[int, Path(gt=0, le=2_147_483_647)]
++Limit = Annotated[int, Query(ge=1, le=100)]
++Offset = Annotated[int, Query(ge=0)]
++
++
++@router.post("/jobs/{job_id}/disputes", response_model=DisputeResponse, status_code=201, tags=["Disputes"])
++def create_job_dispute(job_id: ResourceId, data: DisputeCreate, user: SignedIn, db: DatabaseSession):
++    return open_dispute(db, user, job_id, data)
++
++
++@router.get("/disputes/mine", response_model=list[DisputeResponse], tags=["Disputes"])
++def read_my_disputes(user: SignedIn, db: DatabaseSession, limit: Limit = 20, offset: Offset = 0):
++    return list_disputes(db, user=user, limit=limit, offset=offset)
++
++
++@router.get("/admin/disputes", response_model=list[DisputeResponse], tags=["Admin - Disputes"])
++def read_admin_disputes(admin: Admin, db: DatabaseSession, limit: Limit = 20, offset: Offset = 0):
++    return list_disputes(db, limit=limit, offset=offset)
++
++
++@router.patch("/admin/disputes/{dispute_id}", response_model=DisputeResponse, tags=["Admin - Disputes"])
++def patch_dispute(dispute_id: ResourceId, data: DisputeUpdate, admin: Admin, db: DatabaseSession):
++    return update_dispute(db, dispute_id, data)
++
++
++@router.post("/jobs/{job_id}/rating", response_model=RatingResponse, status_code=201, tags=["Jobs"])
++def create_job_rating(job_id: ResourceId, data: RatingCreate, user: SignedIn, db: DatabaseSession):
++    return rate_job(db, user, job_id, data)
+diff --git a/backend/app/main.py b/backend/app/main.py
+index af06244..5f3883f 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -22,6 +22,7 @@ from app.api.routes.admin_providers import (
+ from app.api.routes.invoices import router as invoices_router
+ from app.api.routes.payments import router as payments_router
+ from app.api.routes.notifications import router as notifications_router
++from app.api.routes.disputes import router as disputes_router
+ from app.api.routes.service_areas import router as service_areas_router
+ 
+ app = FastAPI(
+@@ -64,6 +65,7 @@ app.include_router(invoices_router)
+ app.include_router(payments_router)
+ app.include_router(admin_providers_router)
+ app.include_router(notifications_router)
++app.include_router(disputes_router)
+ 
+ 
+ @app.get("/health", tags=["Health"])
+diff --git a/backend/app/models/dispute.py b/backend/app/models/dispute.py
+index 1bc26ee..9fa6b59 100644
+--- a/backend/app/models/dispute.py
++++ b/backend/app/models/dispute.py
+@@ -4,9 +4,11 @@ from sqlalchemy import (
+     CheckConstraint,
+     DateTime,
+     ForeignKey,
++    Index,
+     String,
+     Text,
+     func,
++    text,
+ )
+ from sqlalchemy.orm import Mapped, mapped_column
+ 
+@@ -17,8 +19,15 @@ class Dispute(Base):
+     __tablename__ = "disputes"
+ 
+     __table_args__ = (
++        Index(
++            "uq_disputes_active_job",
++            "job_id",
++            unique=True,
++            postgresql_where=text("status IN ('OPEN', 'UNDER_REVIEW')"),
++            sqlite_where=text("status IN ('OPEN', 'UNDER_REVIEW')"),
++        ),
+         CheckConstraint(
+-            "status IN ('OPEN', 'UNDER_REVIEW', 'CLOSED')",
++            "status IN ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED')",
+             name="ck_disputes_status",
+         ),
+         CheckConstraint(
+@@ -30,8 +39,8 @@ class Dispute(Base):
+             name="ck_disputes_description",
+         ),
+         CheckConstraint(
+-            "(status = 'CLOSED' AND closed_at IS NOT NULL) OR "
+-            "(status <> 'CLOSED' AND closed_at IS NULL)",
++            "(status IN ('RESOLVED', 'CLOSED') AND closed_at IS NOT NULL) OR "
++            "(status NOT IN ('RESOLVED', 'CLOSED') AND closed_at IS NULL)",
+             name="ck_disputes_closed_at",
+         ),
+         CheckConstraint(
+@@ -73,4 +82,4 @@ class Dispute(Base):
+     )
+     closed_at: Mapped[datetime | None] = mapped_column(
+         DateTime(timezone=True),
+-    )
+\ No newline at end of file
++    )
+diff --git a/backend/app/schemas/dispute.py b/backend/app/schemas/dispute.py
+new file mode 100644
+index 0000000..d32dba0
+--- /dev/null
++++ b/backend/app/schemas/dispute.py
+@@ -0,0 +1,50 @@
++from datetime import datetime
++from typing import Annotated, Literal
++
++from pydantic import BaseModel, ConfigDict, Field, StringConstraints
++
++
++DisputeStatus = Literal["OPEN", "UNDER_REVIEW", "RESOLVED", "CLOSED"]
++NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
++
++
++class DisputeCreate(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    reason: Annotated[NonBlankText, Field(max_length=150)]
++    description: NonBlankText
++
++
++class DisputeUpdate(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    status: DisputeStatus
++    admin_note: NonBlankText | None = None
++
++
++class DisputeResponse(BaseModel):
++    model_config = ConfigDict(from_attributes=True)
++
++    id: int
++    job_id: int
++    opened_by: int
++    reason: str
++    description: str
++    status: DisputeStatus
++    admin_note: str | None
++    created_at: datetime
++    closed_at: datetime | None
++
++
++class RatingCreate(BaseModel):
++    model_config = ConfigDict(extra="forbid")
++
++    rating: int = Field(strict=True, ge=1, le=5)
++    review_text: NonBlankText | None = None
++
++
++class RatingResponse(BaseModel):
++    job_id: int
++    rating: int
++    review_text: str | None
++    reviewed_at: datetime
+diff --git a/backend/app/schemas/service_management.py b/backend/app/schemas/service_management.py
+index b46d1d1..45b0bc5 100644
+--- a/backend/app/schemas/service_management.py
++++ b/backend/app/schemas/service_management.py
+@@ -106,6 +106,7 @@ class PublicPolicy(BaseModel):
+ 
+ 
+ class ProviderDetail(ProviderSummary):
++    review_count: int
+     email: str
+     phone: str
+     address: str | None
+diff --git a/backend/app/services/admin_provider_service.py b/backend/app/services/admin_provider_service.py
+index f8be790..4eb6dfa 100644
+--- a/backend/app/services/admin_provider_service.py
++++ b/backend/app/services/admin_provider_service.py
+@@ -4,6 +4,12 @@ from sqlalchemy.orm import Session
+ 
+ from app.models import Provider, User
+ 
++from app.services.notification_events import (
++    NotificationType,
++    best_effort_notification,
++    notify_provider_owners,
++)
++
+ 
+ VALID_STATUSES = {
+     "PENDING",
+@@ -127,6 +133,14 @@ def approve_provider(db: Session, provider_id: int):
+         )
+ 
+     try:
++        with best_effort_notification(db, NotificationType.PROVIDER_APPROVED):
++            notify_provider_owners(
++                db,
++                provider_id=provider_id,
++                title="Provider Approved",
++                message="Your provider account was approved.",
++                notification_type=NotificationType.PROVIDER_APPROVED,
++            )
+         db.commit()
+         db.refresh(provider)
+     except Exception:
+@@ -161,6 +175,14 @@ def reject_provider(db: Session, provider_id: int):
+     provider.verification_status = "REJECTED"
+ 
+     try:
++        with best_effort_notification(db, NotificationType.PROVIDER_REJECTED):
++            notify_provider_owners(
++                db,
++                provider_id=provider_id,
++                title="Provider Rejected",
++                message="Your provider account was rejected.",
++                notification_type=NotificationType.PROVIDER_REJECTED,
++            )
+         db.commit()
+         db.refresh(provider)
+     except Exception:
+@@ -195,10 +217,18 @@ def suspend_provider(db: Session, provider_id: int):
+     provider.verification_status = "SUSPENDED"
+ 
+     try:
++        with best_effort_notification(db, NotificationType.PROVIDER_SUSPENDED):
++            notify_provider_owners(
++                db,
++                provider_id=provider_id,
++                title="Provider Suspended",
++                message="Your provider account was suspended.",
++                notification_type=NotificationType.PROVIDER_SUSPENDED,
++            )
+         db.commit()
+         db.refresh(provider)
+     except Exception:
+         db.rollback()
+         raise
+ 
+-    return provider
+\ No newline at end of file
++    return provider
+diff --git a/backend/app/services/dispute_service.py b/backend/app/services/dispute_service.py
+new file mode 100644
+index 0000000..ad392c8
+--- /dev/null
++++ b/backend/app/services/dispute_service.py
+@@ -0,0 +1,100 @@
++from datetime import datetime, timezone
++
++from fastapi import HTTPException
++from sqlalchemy import select
++from sqlalchemy.orm import Session
++
++from app.models.dispute import Dispute
++from app.models.job import Job
++from app.models.service_request import ServiceRequest
++from app.models.user import User
++from app.schemas.dispute import DisputeCreate, DisputeUpdate, RatingCreate, RatingResponse
++
++
++ACTIVE_DISPUTE_STATUSES = ("OPEN", "UNDER_REVIEW")
++FINAL_DISPUTE_STATUSES = ("RESOLVED", "CLOSED")
++DISPUTE_TRANSITIONS = {
++    "OPEN": ("UNDER_REVIEW",),
++    "UNDER_REVIEW": FINAL_DISPUTE_STATUSES,
++}
++
++
++def _job_scope(user: User):
++    if user.role == "CLIENT":
++        owned_requests = select(ServiceRequest.id).where(ServiceRequest.client_id == user.id)
++        return Job.request_id.in_(owned_requests)
++    if user.role in {"COMPANY_MANAGER", "INDIVIDUAL_PROVIDER"} and user.provider_id is not None:
++        return Job.provider_id == user.provider_id
++    raise HTTPException(403, "Your role cannot manage job disputes")
++
++
++def _completed_job(db: Session, user: User, job_id: int) -> Job:
++    job = db.scalar(select(Job).where(Job.id == job_id, _job_scope(user)).with_for_update())
++    if job is None:
++        raise HTTPException(404, "Job not found")
++    if job.status != "COMPLETED":
++        raise HTTPException(409, "Job must be completed")
++    return job
++
++
++def open_dispute(db: Session, user: User, job_id: int, data: DisputeCreate) -> Dispute:
++    _completed_job(db, user, job_id)
++    existing = db.scalar(
++        select(Dispute.id).where(
++            Dispute.job_id == job_id, Dispute.status.in_(ACTIVE_DISPUTE_STATUSES)
++        ).limit(1)
++    )
++    if existing is not None:
++        raise HTTPException(409, "Job already has an active dispute")
++
++    dispute = Dispute(job_id=job_id, opened_by=user.id, **data.model_dump())
++    db.add(dispute)
++    db.commit()
++    db.refresh(dispute)
++    return dispute
++
++
++def list_disputes(
++    db: Session, *, limit: int, offset: int, user: User | None = None
++) -> list[Dispute]:
++    query = select(Dispute)
++    if user is not None:
++        query = query.join(Job, Job.id == Dispute.job_id).where(_job_scope(user))
++    return list(db.scalars(query.order_by(Dispute.id.desc()).offset(offset).limit(limit)))
++
++
++def update_dispute(db: Session, dispute_id: int, data: DisputeUpdate) -> Dispute:
++    dispute = db.scalar(select(Dispute).where(Dispute.id == dispute_id).with_for_update())
++    if dispute is None:
++        raise HTTPException(404, "Dispute not found")
++    if data.status not in DISPUTE_TRANSITIONS.get(dispute.status, ()):
++        raise HTTPException(409, "Invalid dispute status transition")
++
++    dispute.status = data.status
++    if "admin_note" in data.model_fields_set:
++        dispute.admin_note = data.admin_note
++    if data.status in FINAL_DISPUTE_STATUSES:
++        dispute.closed_at = datetime.now(timezone.utc)
++    db.commit()
++    db.refresh(dispute)
++    return dispute
++
++
++def rate_job(db: Session, user: User, job_id: int, data: RatingCreate) -> RatingResponse:
++    if user.role != "CLIENT":
++        raise HTTPException(403, "Only the job's client can submit a rating")
++    job = _completed_job(db, user, job_id)
++    if job.rating is not None:
++        raise HTTPException(409, "Job already has a rating")
++
++    reviewed_at = datetime.now(timezone.utc)
++    job.rating = data.rating
++    job.review_text = data.review_text
++    job.reviewed_at = reviewed_at
++    db.commit()
++    return RatingResponse(
++        job_id=job_id,
++        rating=data.rating,
++        review_text=data.review_text,
++        reviewed_at=reviewed_at,
++    )
+diff --git a/backend/app/services/invoice_service.py b/backend/app/services/invoice_service.py
+index f917cb2..5719cd1 100644
+--- a/backend/app/services/invoice_service.py
++++ b/backend/app/services/invoice_service.py
+@@ -13,6 +13,12 @@ from app.models.quotation import Quotation
+ from app.models.service_request import ServiceRequest
+ from app.models.payment import Payment
+ 
++from app.services.notification_events import (
++    NotificationType,
++    best_effort_notification,
++    notify_provider_owners,
++)
++
+ 
+ PROVIDER_ROLES = {"COMPANY_MANAGER", "INDIVIDUAL_PROVIDER"}
+ READ_ROLES = PROVIDER_ROLES | {"CLIENT"}
+@@ -154,6 +160,14 @@ def record_payment(db: Session, user: Any, invoice_id: int, payload: dict) -> di
+             "received_at": payment.received_at,
+             "invoice": _invoice_public(invoice),
+         }
++        with best_effort_notification(db, NotificationType.PAYMENT_RECORDED):
++            notify_provider_owners(
++                db,
++                provider_id=job.provider_id,
++                title="Payment Recorded",
++                message=f"Payment #{payment.id} was recorded for invoice #{invoice.id}.",
++                notification_type=NotificationType.PAYMENT_RECORDED,
++            )
+         db.commit()
+         return result
+     except Exception:
+diff --git a/backend/app/services/job_service.py b/backend/app/services/job_service.py
+index e3a86d9..d56083b 100644
+--- a/backend/app/services/job_service.py
++++ b/backend/app/services/job_service.py
+@@ -15,6 +15,12 @@ from sqlalchemy.exc import IntegrityError
+ from sqlalchemy.orm import Session
+ from app.services.invoice_service import ensure_invoice_for_completed_job
+ 
++from app.services.notification_events import (
++    NotificationType,
++    best_effort_notification,
++    create_notification,
++)
++
+ 
+ TABLES = (
+     "jobs", "job_records", "users", "providers", "service_requests",
+@@ -311,6 +317,19 @@ def propose_schedule(db: Session, user: Any, job_id: int, scheduled_date: date,
+         updated_at=datetime.now(timezone.utc),
+     ))
+     _append_status_record(db, job_id, f"Schedule proposed for {scheduled_date.isoformat()} {scheduled_time.isoformat()}")
++    with best_effort_notification(db, NotificationType.SCHEDULE_PROPOSED):
++        requests = tables(db)["service_requests"]
++        client_id = db.scalar(
++            select(requests.c.client_id).where(requests.c.id == job["request_id"])
++        )
++        if client_id is not None:
++            create_notification(
++                db,
++                user_id=client_id,
++                title="Schedule Proposed",
++                message=f"A schedule was proposed for job #{job_id}.",
++                notification_type=NotificationType.SCHEDULE_PROPOSED,
++            )
+     db.commit()
+     return _get_job(db, user, job_id)
+ 
+@@ -334,6 +353,14 @@ def approve_schedule(db: Session, user: Any, job_id: int) -> dict:
+         updated_at=datetime.now(timezone.utc),
+     ))
+     _append_status_record(db, job_id, "Client approved the proposed schedule")
++    with best_effort_notification(db, NotificationType.SCHEDULE_APPROVED):
++        create_notification(
++            db,
++            user_id=int(job["assigned_user_id"]),
++            title="Schedule Approved",
++            message=f"The client approved the schedule for job #{job_id}.",
++            notification_type=NotificationType.SCHEDULE_APPROVED,
++        )
+     db.commit()
+     return _get_job(db, user, job_id)
+ 
+@@ -372,6 +399,19 @@ def complete_job(db: Session, user: Any, job_id: int) -> dict:
+     ))
+     _append_status_record(db, job_id, "Job completed")
+     ensure_invoice_for_completed_job(db, job_id)
++    with best_effort_notification(db, NotificationType.JOB_COMPLETED):
++        requests = tables(db)["service_requests"]
++        client_id = db.scalar(
++            select(requests.c.client_id).where(requests.c.id == job["request_id"])
++        )
++        if client_id is not None:
++            create_notification(
++                db,
++                user_id=client_id,
++                title="Job Completed",
++                message=f"Job #{job_id} has been completed.",
++                notification_type=NotificationType.JOB_COMPLETED,
++            )
+     db.commit()
+     return _get_job(db, user, job_id)
+ 
+diff --git a/backend/app/services/notification_events.py b/backend/app/services/notification_events.py
+index 98bb286..5b648ab 100644
+--- a/backend/app/services/notification_events.py
++++ b/backend/app/services/notification_events.py
+@@ -1,11 +1,9 @@
+-"""
+-Notification event type codes and integration examples.
++"""Notification event types and helpers for business services."""
+ 
+-Call create_notification() from the existing business service while its
+-database transaction is still open. Do not commit inside create_notification().
+-"""
++import logging
++from collections.abc import Iterator
++from contextlib import contextmanager
+ 
+-from app.services.notification_service import create_notification
+ from sqlalchemy import select
+ from sqlalchemy.orm import Session
+ 
+@@ -13,6 +11,8 @@ from app.models.user import User
+ from app.services.notification_service import create_notification
+ 
+ 
++logger = logging.getLogger(__name__)
++
+ class NotificationType:
+     REQUEST_CREATED = "REQUEST_CREATED"
+     QUOTATION_SENT = "QUOTATION_SENT"
+@@ -27,50 +27,18 @@ class NotificationType:
+     PROVIDER_SUSPENDED = "PROVIDER_SUSPENDED"
+ 
+ 
+-# Integration pattern (adapt variable names to the existing service):
+-#
+-# 1) New request -> provider:
+-# create_notification(
+-#     db,
+-#     user_id=provider_owner_user.id,
+-#     title="New service request",
+-#     message=f"A new {service_name} request has been submitted.",
+-#     notification_type=NotificationType.REQUEST_CREATED,
+-# )
+-# db.commit()  # one commit for both request + notification
+-#
+-# 2) Quotation sent -> client:
+-# create_notification(
+-#     db,
+-#     user_id=request.client_id,
+-#     title="Quotation received",
+-#     message="A provider has sent you a quotation.",
+-#     notification_type=NotificationType.QUOTATION_SENT,
+-# )
+-#
+-# 3) Quotation approved/declined -> provider owner:
+-# use QUOTATION_APPROVED or QUOTATION_DECLINED and the provider owner's user_id.
+-#
+-# 4) Schedule proposed -> client:
+-# use SCHEDULE_PROPOSED and the request/job client's user_id.
+-#
+-# 5) Schedule approved -> assigned worker/provider:
+-# use SCHEDULE_APPROVED and the assigned worker's user_id or provider owner's
+-# user_id, according to the existing assignment model and agreed recipient rule.
+-#
+-# 6) Job completed -> client:
+-# use JOB_COMPLETED and the job client's user_id.
+-#
+-# 7) Payment recorded -> provider owner:
+-# use PAYMENT_RECORDED and the provider owner's user_id.
+-#
+-# 8) Provider approved/rejected/suspended -> provider owner:
+-# use the matching provider status type and the provider owner's user_id.
+-#
+-# Transaction rule:
+-# - Add the notification before the existing business transaction commits.
+-# - If the business operation fails, roll back the notification too.
+-# - Do not call db.commit() separately for each notification.
++@contextmanager
++def best_effort_notification(db: Session, event_type: str) -> Iterator[None]:
++    """Roll back a failed notification while preserving the business transaction."""
++    # SQLAlchemy flushes pending changes before opening a savepoint. Keep
++    # business flush errors outside the notification exception handler.
++    db.flush()
++    savepoint = db.begin_nested()
++    try:
++        with savepoint:
++            yield
++    except Exception:
++        logger.exception("Failed to create notification for %s", event_type)
+ 
+ 
+ def notify_provider_owners(
+diff --git a/backend/app/services/quotation_service.py b/backend/app/services/quotation_service.py
+index 0a5a750..e33ff49 100644
+--- a/backend/app/services/quotation_service.py
++++ b/backend/app/services/quotation_service.py
+@@ -18,6 +18,7 @@ from app.schemas.quotation import QuotationCreate, QuotationUpdate
+ 
+ from app.services.notification_events import (
+     NotificationType,
++    best_effort_notification,
+     create_notification,
+     notify_provider_owners,
+ )
+@@ -362,13 +363,14 @@ def update_draft_quotation(db: Session, user: Any, quotation_id: int, data: Quot
+             _insert_items(db, quotation_id, data.items)
+         if data.status == "SENT":
+             _set_request_status(db, int(request["id"]), "QUOTATION_SENT")
+-            create_notification(
+-                db,
+-                user_id=int(request["client_id"]),
+-                title="Quotation Received",
+-                message=f"You received a quotation #{quotation_id}.",
+-                notification_type=NotificationType.QUOTATION_SENT,
+-            )
++            with best_effort_notification(db, NotificationType.QUOTATION_SENT):
++                create_notification(
++                    db,
++                    user_id=int(request["client_id"]),
++                    title="Quotation Received",
++                    message=f"You received a quotation #{quotation_id}.",
++                    notification_type=NotificationType.QUOTATION_SENT,
++                )
+         db.commit()
+     except IntegrityError:
+         db.rollback()
+@@ -464,13 +466,14 @@ def approve_quotation(db: Session, user: Any, quotation_id: int) -> dict[str, An
+             approval_values["updated_at"] = _now()
+         db.execute(update(quotes).where(quotes.c.id == quotation_id).values(**approval_values))
+         job_id = _create_job_for_approved_quote(db, quote, request)
+-        notify_provider_owners(
+-            db,
+-            provider_id=int(request["provider_id"]),
+-            title="Quotation Approved",
+-            message=f"Your quotation #{quotation_id} has been approved.",
+-            notification_type=NotificationType.QUOTATION_APPROVED,
+-        )
++        with best_effort_notification(db, NotificationType.QUOTATION_APPROVED):
++            notify_provider_owners(
++                db,
++                provider_id=int(request["provider_id"]),
++                title="Quotation Approved",
++                message=f"Your quotation #{quotation_id} has been approved.",
++                notification_type=NotificationType.QUOTATION_APPROVED,
++            )
+         db.commit()
+     except IntegrityError:
+         db.rollback()
+@@ -504,13 +507,14 @@ def decline_quotation(db: Session, user: Any, quotation_id: int) -> dict[str, An
+             # The proposal permits a declined quotation to be replaced. Return the
+             # request to provider review so another quotation can be prepared.
+             _set_request_status(db, int(request["id"]), "UNDER_REVIEW")
+-        notify_provider_owners(
+-            db,
+-            provider_id=int(request["provider_id"]),
+-            title="Quotation Declined",
+-            message=f"Your quotation #{quotation_id} has been declined.",
+-            notification_type=NotificationType.QUOTATION_DECLINED,
+-        )
++        with best_effort_notification(db, NotificationType.QUOTATION_DECLINED):
++            notify_provider_owners(
++                db,
++                provider_id=int(request["provider_id"]),
++                title="Quotation Declined",
++                message=f"Your quotation #{quotation_id} has been declined.",
++                notification_type=NotificationType.QUOTATION_DECLINED,
++            )
+         db.commit()
+     except Exception:
+         db.rollback()
+diff --git a/backend/app/services/request_service.py b/backend/app/services/request_service.py
+index 79d0bca..4799773 100644
+--- a/backend/app/services/request_service.py
++++ b/backend/app/services/request_service.py
+@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
+ from app.schemas.service_request import RequestCreate
+ from app.services.notification_events import (
+     NotificationType,
++    best_effort_notification,
+     notify_provider_owners,
+ )
+ 
+@@ -202,13 +203,14 @@ def create_request(db: Session, user: Any, data: RequestCreate) -> dict[str, Any
+     values.update(client_id=int(user.id), status="NEW")
+     try:
+         request_id = db.execute(insert(requests).values(**values).returning(requests.c.id)).scalar_one()
+-        notify_provider_owners(
+-            db,
+-            provider_id=int(data.provider_id),
+-            title="New Service Request",
+-            message=f"You received a new service request #{request_id}.",
+-            notification_type=NotificationType.REQUEST_CREATED,
+-        )
++        with best_effort_notification(db, NotificationType.REQUEST_CREATED):
++            notify_provider_owners(
++                db,
++                provider_id=int(data.provider_id),
++                title="New Service Request",
++                message=f"You received a new service request #{request_id}.",
++                notification_type=NotificationType.REQUEST_CREATED,
++            )
+         db.commit()
+     except IntegrityError:
+         db.rollback()
+diff --git a/backend/app/services/service_management.py b/backend/app/services/service_management.py
+index 6330aa1..391e488 100644
+--- a/backend/app/services/service_management.py
++++ b/backend/app/services/service_management.py
+@@ -252,11 +252,19 @@ def search_providers(
+ 
+ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
+     query, _ = _directory_query()
+-    row = db.execute(query.where(Provider.id == provider_id)).one_or_none()
++    review_count = (
++        select(func.count(Job.rating))
++        .where(Job.provider_id == Provider.id, Job.status == "COMPLETED")
++        .correlate(Provider)
++        .scalar_subquery()
++    )
++    row = db.execute(
++        query.add_columns(review_count).where(Provider.id == provider_id)
++    ).one_or_none()
+     if row is None:
+         raise HTTPException(404, "Provider not found")
+-    provider = row[0]
+-    summary = _provider_summary(*row)
++    provider, rating, completed_jobs, starting_price, count = row
++    summary = _provider_summary(provider, rating, completed_jobs, starting_price)
+ 
+     areas = db.scalars(
+         select(ProviderArea.area_name)
+@@ -283,6 +291,7 @@ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
+         .order_by(Policy.id)
+     )
+     return ProviderDetail(
++        review_count=count,
+         **summary.model_dump(),
+         email=provider.email,
+         phone=provider.phone,
+diff --git a/backend/requirements.txt b/backend/requirements.txt
+index f3931a4a35e4db3ce167ec20586a66c669434290..996ba141f8712d34033f0121d93b2947fb6bcac2 100644
+GIT binary patch
+literal 783
+zcmYjP%Wm5+5WMp%1oRrQdRT6H;K4vqphXP0NQ<JUfR<J=VTvTkwO#e=J5<s%H}33f
+zc81#0d^EjMwQMR`3+<d|%`}vQ2U^KWc5gsl0;LS!%L?#fyiyxkceyi8-Zf=Ejz*~l
+zNUr#gl}F<S<0f=B+co)8iFYk}Yx=WN_p(FR;8Ixl<Q+=oM*uWyW6P_yX3*?ohFid+
+zPOJmAf%vuoaH{L)AitRddv8~^d59UDR;tCBVz1BOUCWJZ@s8(9c+?~1WF<Gk2Xai%
+zg*Yzdx&Wp5#E_QWhbb4fa{DjLm+82?qPM}CW9HH3mZc9mCIV@M4dOvN&Vo0xhH|e!
+znTYvCADr_h^VItYa*gb=L5Jn*&+lvZ%4pRIUNO1rY9bCeEWdX92c@<+rxlOi9(J}r
+z(F}&z3EogGT5Q8mXb+18Y{lx*KzQoeWaXg*Mm;B<=r`sk;7}8!F<9^)cmYA13U+ql
+zay6j2_H`SiZ<_nlXl(v1_3GA*j>-3D;*5L%F%c>F$W}wF=kFrk6+eRYdPsN0;nU{=
+zoG4{FcZGICvHMa)cwz`Y;r&F8qRvT3m_JK7Uo0Dl%_2-!oZ%ys*k3S6xXT<Ck+QF@
+Wr;?*~Y4mZXn8f7$WU0hFZNy*c1oYYf
+
+literal 1380
+zcmZ{kPjAyu5XARfiI3u{c9Q@H4!xoxfr^AURc_+^QCmB*U5feez;AZ_97h6Ki7fB#
+z%<SyG_vd$MPgdEpJ=nq4_JJq2ODpV(|J>f#g_TzGG}iOhle@8uUo&PaPrv1Vb9)=?
+zNL}aX%6;cG344IK@z{dzIY=kw)^@~d^kndDc@Cagj9KCioPT9z-c^m-0~oteL18Or
+zNVVs<;!gZ)ypb!9&MDQ>7K|GZJNg>%WbYc~T|xZ)lp|kD5S~!~gEygV+{MP)v5!l;
+zp7OWEI`{cVrto44E5{AqJ^J#qSW>j7vPV&mng*_u-zP=luVE3kcr|DF_la+hRHgZA
+z64z6tCH4aH9a&o@nX093;aQDOxQ4reS$$W$x44s0le&?!i`jgSXdLiY)w>B*x>k;Q
+z9#7LO9XDy1XTQ>&JbrL2sZ%tzSd&`Aqv{TI;eW)7k!|qlsEc$KG|wE(a}-T5<z$W}
+z-_JKp`LShkSKRZed+)hLg}M;Oa-6iXKa>5@zS-9)IzJQhjf-<A&ujK8%}#hR6(N1M
+z8>V~fQ7H;n#B*m~_<n<9Yc^Oj8)l4Y2C<K=PgQ+}<~Sq5iv5W*9v)=wh0aC=vYgQg
+zmb%!Nq;6hwPwr1g*Qtt%*x&FzluLDQzuZgRM&aHS4k{iu&<jpzdOBez)}_xdw7yc=
+ud(XN}w5`FUp0p1st74BjaCH8)%_-}x=Sj;292I?vs|TqZH!p6mg!C65L&>QC
+
