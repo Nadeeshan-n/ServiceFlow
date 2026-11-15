@@ -186,3 +186,19 @@ export type JobRecordRow = {
   content_type: string | null
   created_at: string
 }
+
+export type AdminProviderRow = {
+  id: number
+  type: 'INDIVIDUAL' | 'COMPANY' | string
+  name: string
+  description: string | null
+  email: string
+  phone: string
+  address: string | null
+  verification_status: string
+  accepting_requests: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ProviderActionResponse = { message: string; provider: AdminProviderRow }

@@ -6,6 +6,7 @@ import type {
   InvoiceRow, PaymentRow,
   JobRow, JobDetailRow, EmployeeRow, 
   EmployeeCreateResponse, EmployeeUpdateInput,
+  AdminProviderRow, ProviderActionResponse,
 } from '../types/provider'
 
 export const providerService = {
@@ -134,6 +135,17 @@ export const providerService = {
     URL.revokeObjectURL(url)
   },
 
-  
+    // ---- Admin: provider verification ----
+  adminListProviders: (params?: { verification_status?: string; provider_type?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.verification_status) sp.set('verification_status', params.verification_status)
+    if (params?.provider_type) sp.set('provider_type', params.provider_type)
+    const qs = sp.toString() ? `?${sp.toString()}` : ''
+    return api<{ items: AdminProviderRow[]; total: number; limit: number; offset: number }>(`/admin/providers${qs}`)
+  },
+  adminGetProvider: (id: number) => api<AdminProviderRow>(`/admin/providers/${id}`),
+  adminApproveProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/approve`, 'PATCH'),
+  adminRejectProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/reject`, 'PATCH'),
+  adminSuspendProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/suspend`, 'PATCH'),
 
 }
