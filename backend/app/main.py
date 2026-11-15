@@ -22,6 +22,7 @@ from app.api.routes.admin_providers import (
 from app.api.routes.invoices import router as invoices_router
 from app.api.routes.payments import router as payments_router
 from app.api.routes.notifications import router as notifications_router
+from app.api.routes.service_areas import router as service_areas_router
 
 app = FastAPI(
     title="ServiceFlow API",
@@ -52,6 +53,7 @@ app.include_router(
 
 app.include_router(policies_router)
 app.include_router(providers_router)
+app.include_router(service_areas_router, prefix="/providers")
 app.include_router(employees_router)
 app.include_router(service_management_router)
 app.include_router(requests_router)
@@ -62,7 +64,6 @@ app.include_router(invoices_router)
 app.include_router(payments_router)
 app.include_router(admin_providers_router)
 app.include_router(notifications_router)
-app.include_router(providers_router, prefix="/providers", tags=["Providers"])
 
 
 @app.get("/health", tags=["Health"])
