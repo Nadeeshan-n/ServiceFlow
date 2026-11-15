@@ -7,7 +7,7 @@ import type {
   JobRow, JobDetailRow, EmployeeRow, 
   EmployeeCreateResponse, EmployeeUpdateInput,
   AdminProviderRow, ProviderActionResponse,
-  DisputeRow,
+  DisputeRow,NotificationRow, NotificationList,
 } from '../types/provider'
 
 export const providerService = {
@@ -167,8 +167,22 @@ export const providerService = {
   adminUpdateDispute: (id: number, body: { status: DisputeRow['status']; admin_note?: string | null }) =>
     api<DisputeRow>(`/admin/disputes/${id}`, 'PATCH', body),
 
-
-
+    // ---- Notifications ----
+  listNotifications: (params?: { page?: number; limit?: number; unread_only?: boolean }) => {
+    const sp = new URLSearchParams()
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.limit) sp.set('limit', String(params.limit))
+    if (params?.unread_only) sp.set('unread_only', 'true')
+    const qs = sp.toString() ? `?${sp.toString()}` : ''
+    return api<NotificationList>(`/notifications${qs}`)
+  },
+  unreadNotificationCount: () =>
+    api<{ unread_count: number }>('/notifications/unread-count'),
+  markNotificationRead: (id: number) =>
+    api<NotificationRow>(`/notifications/${id}/read`, 'PATCH'),
+  markAllNotificationsRead: () =>
+    api<{ updated_count: number; message: string }>('/notifications/read-all', 'PATCH'),
+  
 
 
 }

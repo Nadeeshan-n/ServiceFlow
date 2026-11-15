@@ -5,6 +5,7 @@ import Pipeline from "./features/manager/Pipeline";
 import AdminDashboard from "./features/admin/Dashboard";
 import AdminDisputes from "./features/admin/Disputes";
 import AdminAllRequestsJobs from "./features/admin/AllRequestsJobs";
+import { NotificationBell } from "./components/NotificationBell";
 
 import {
   BrowserRouter,
@@ -93,7 +94,17 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
         subtitle={subtitleMap[role]}
         onNavigate={(href) => navigate(href)}
       />
-      <main style={{ flex: 1, padding: 24 }}>{children}</main>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <header style={{
+          display: "flex", alignItems: "center", justifyContent: "flex-end",
+          gap: 12, padding: "10px 24px",
+          borderBottom: "1px solid #e8e8e8", background: "white",
+        }}>
+          <NotificationBell />
+          <span style={{ fontSize: 13, color: "#666" }}>{user?.name}</span>
+        </header>
+        <main style={{ flex: 1, padding: 24 }}>{children}</main>
+      </div>
     </div>
   );
 }
