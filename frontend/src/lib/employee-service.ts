@@ -1,4 +1,4 @@
-import { api } from './api'
+import { api, apiUpload, apiBlob } from './api'
 import type {
   EmployeeRow, JobRow, JobDetailRow, JobRecordRow, SkillRow,
 } from '../types/provider'
@@ -32,4 +32,19 @@ export const employeeService = {
     quantity?: number
     unit?: string
   }) => api<JobRecordRow>(`/jobs/${jobId}/records`, 'POST', body),
+
+  uploadJobPhoto: (jobId: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiUpload<JobRecordRow>(`/jobs/${jobId}/records/photo`, form)
+  },
+  downloadJobPhoto: async (jobId: number, recordId: number, fileName: string) => {
+    const blob = await apiBlob(`/jobs/${jobId}/records/${recordId}/photo`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
 }

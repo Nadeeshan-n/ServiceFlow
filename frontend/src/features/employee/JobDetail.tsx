@@ -13,10 +13,11 @@ export default function EmployeeJobDetail() {
   if (!id || Number.isNaN(id)) return <p className="p-6">Invalid job.</p>
 
   const job = useResource(() => employeeService.getJob(id), [id])
-  const [adding, setAdding] = useState<'NOTE' | 'MATERIAL' | null>(null)
+  const [adding, setAdding] = useState<'NOTE' | 'MATERIAL' | 'PHOTO' | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [pending, setPending] = useState<'start' | 'complete' | null>(null)
   const [error, setError] = useState('')
+  const [downloading, setDownloading] = useState<number | null>(null)
 
   async function start() {
     setPending('start'); setError('')
@@ -30,6 +31,12 @@ export default function EmployeeJobDetail() {
       setConfirming(false); job.reload()
       setTimeout(() => navigate('/employee/jobs'), 800)
     } catch (c) { setError((c as Error).message) } finally { setPending(null) }
+  }
+
+  async function downloadPhoto(recordId: number, fileName: string) {
+    setDownloading(recordId); setError('')
+    try { await employeeService.downloadJobPhoto(id, recordId, fileName) }
+    catch (c) { setError((c as Error).message) } finally { setDownloading(null) }
   }
 
   return <div className="mx-auto max-w-2xl space-y-4">
@@ -72,11 +79,12 @@ export default function EmployeeJobDetail() {
         </div>
 
         <SurfaceCard className="space-y-3 p-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-semibold">Work log</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <ActionButton variant="stub" size="small" onClick={() => setAdding('NOTE')}>+ Note</ActionButton>
               <ActionButton variant="stub" size="small" onClick={() => setAdding('MATERIAL')}>+ Material</ActionButton>
+              <ActionButton variant="stub" size="small" onClick={() => setAdding('PHOTO')}>+ Photo</ActionButton>
             </div>
           </div>
           {job.data.records.length === 0
@@ -95,6 +103,19 @@ export default function EmployeeJobDetail() {
                         {r.quantity && ` · ${r.quantity} ${r.unit ?? ''}`}
                       </p>
                     )}
+                    {r.file_name && (
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-docket border border-line bg-paper p-2 text-sm">
+                        <span className="truncate">{r.file_name}</span>
+                        <ActionButton
+                          variant="stub"
+                          size="small"
+                          onClick={() => downloadPhoto(r.id, r.file_name!)}
+                          disabled={downloading === r.id}
+                        >
+                          {downloading === r.id ? '…' : 'Download'}
+                        </ActionButton>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>}
@@ -102,10 +123,19 @@ export default function EmployeeJobDetail() {
       </>}
     </Resource>
 
-    <Modal open={adding !== null} title={adding === 'NOTE' ? 'Add note' : 'Add material'} onClose={() => setAdding(null)}>
-      {adding && <AddRecord
+    <Modal
+      open={adding !== null}
+      title={adding === 'NOTE' ? 'Add note' : adding === 'MATERIAL' ? 'Add material' : 'Upload photo'}
+      onClose={() => setAdding(null)}
+    >
+      {adding && adding !== 'PHOTO' && <AddRecord
         jobId={id}
         type={adding}
+        onDone={() => { setAdding(null); job.reload() }}
+        onCancel={() => setAdding(null)}
+      />}
+      {adding === 'PHOTO' && <UploadPhoto
+        jobId={id}
         onDone={() => { setAdding(null); job.reload() }}
         onCancel={() => setAdding(null)}
       />}
@@ -169,6 +199,46 @@ function AddRecord({ jobId, type, onDone, onCancel }: {
     <div className="flex justify-end gap-2">
       <ActionButton type="button" onClick={onCancel}>Cancel</ActionButton>
       <ActionButton type="submit" variant="stamp" disabled={pending}>{pending ? 'Saving…' : 'Save'}</ActionButton>
+    </div>
+  </form>
+}
+
+function UploadPhoto({ jobId, onDone, onCancel }: {
+  jobId: number
+  onDone: () => void
+  onCancel: () => void
+}) {
+  const [file, setFile] = useState<File | null>(null)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit(e: FormEvent) {
+    e.preventDefault(); if (pending || !file) return
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic'].includes(file.type)) {
+      setError('Only JPG, PNG, WebP or HEIC images are allowed.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be 5 MB or smaller.')
+      return
+    }
+    setPending(true); setError('')
+    try {
+      await employeeService.uploadJobPhoto(jobId, file)
+      onDone()
+    } catch (c) { setError((c as Error).message) } finally { setPending(false) }
+  }
+
+  return <form onSubmit={submit} className="space-y-4">
+    <div>
+      <label className="mb-1 block text-sm font-medium">Photo (JPG, PNG, WebP, HEIC · max 5 MB)</label>
+      <input type="file" accept="image/*" className="sf-input" onChange={e => setFile(e.target.files?.[0] ?? null)} required />
+    </div>
+    {file && <p className="text-xs text-text-secondary">{file.name} · {(file.size / 1024).toFixed(0)} KB</p>}
+    {error && <Notice error>{error}</Notice>}
+    <div className="flex justify-end gap-2">
+      <ActionButton type="button" onClick={onCancel}>Cancel</ActionButton>
+      <ActionButton type="submit" variant="stamp" disabled={pending || !file}>{pending ? 'Uploading…' : 'Upload'}</ActionButton>
     </div>
   </form>
 }
