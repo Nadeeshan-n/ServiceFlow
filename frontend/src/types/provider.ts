@@ -96,3 +96,26 @@ export type QuotationRow = {
   }[]
   job_id?: number | null
 }
+
+export type InvoiceRow = {
+  id: number
+  job_id: number
+  invoice_number: string
+  total_amount: string
+  downpayment_amount: string
+  paid_amount: string
+  payment_status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | string
+  issued_at: string
+  paid_at: string | null
+}
+
+export type PaymentRow = {
+  id: number
+  invoice_id: number
+  received_by: number
+  amount: string
+  method: 'CASH' | 'BANK_TRANSFER' | 'CARD_EXTERNAL' | 'OTHER'
+  reference: string | null
+  note: string | null
+  received_at: string
+}

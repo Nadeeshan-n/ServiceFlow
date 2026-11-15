@@ -29,6 +29,7 @@ const statusMap: Record<string, WorkflowStatus> = {
   JOB_CREATED: 'awaiting', SCHEDULE_PROPOSED: 'awaiting', SCHEDULE_CONFIRMED: 'scheduled',
   IN_PROGRESS: 'in_progress', COMPLETED: 'completed', UNPAID: 'unpaid', PAID: 'paid',
   UNDER_REVIEW: 'awaiting', NEED_INFORMATION: 'awaiting', QUOTATION_SENT: 'scheduled',
+  PARTIALLY_PAID: 'awaiting',
 }
 const statusLabels: Record<string, string> = {
   NEW: 'Request sent', QUOTED: 'Quotation ready', CONVERTED: 'Job created', DRAFT: 'Draft',
@@ -37,6 +38,7 @@ const statusLabels: Record<string, string> = {
   SCHEDULE_CONFIRMED: 'Appointment confirmed', IN_PROGRESS: 'Work in progress', COMPLETED: 'Completed',
   UNPAID: 'Unpaid', PAID: 'Paid',
   UNDER_REVIEW: 'Under review', NEED_INFORMATION: 'Needs information', QUOTATION_SENT: 'Quotation sent',
+  PARTIALLY_PAID: 'Partially paid',
 }
 export const statusLabel = (status: string) => statusLabels[status] || status.toLowerCase().replaceAll('_', ' ')
 export function RecordStatus({ status }: { status: string }) { return <StatusBadge status={statusMap[status] || 'awaiting'} label={statusLabel(status)} /> }

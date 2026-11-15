@@ -66,3 +66,20 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   }
   return data as T
 }
+
+export async function apiBlob(path: string): Promise<Blob> {
+  let response: Response
+  try {
+    response = await fetch(baseUrl + path, {
+      method: 'GET',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      signal: AbortSignal.timeout(30000),
+    })
+  } catch {
+    throw new ApiError('Cannot reach ServiceFlow. Check your connection.', 0)
+  }
+  if (!response.ok) {
+    throw new ApiError('Download failed. Refresh and try again.', response.status)
+  }
+  return response.blob()
+}

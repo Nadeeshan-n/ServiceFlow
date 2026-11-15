@@ -1,8 +1,9 @@
-import { api, apiUpload } from './api'
+import { api, apiUpload, apiBlob } from './api'
 import type {
   CatalogService, PolicyRow, Provider, ProviderOffering,
   ServiceArea, WorkingHour,
   RequestRow, RequestMessage, QuotationItem, QuotationRow,
+  InvoiceRow, PaymentRow,
 } from '../types/provider'
 
 type Wrapped<T> = { [K in keyof T]: T[K] }
@@ -83,6 +84,28 @@ export const providerService = {
     note?: string | null
   }) => api<QuotationRow>(`/quotations/${id}`, 'PATCH', body),
 
-
+    // ---- Invoices ----
+  listInvoices: () =>
+    api<{ items: InvoiceRow[]; total: number; limit: number; offset: number }>('/invoices'),
+  getInvoice: (id: number) => api<InvoiceRow>(`/invoices/${id}`),
+  listPayments: async (invoiceId: number): Promise<PaymentRow[]> => {
+    const r = await api<{ items: PaymentRow[]; total: number }>(`/invoices/${invoiceId}/payments`)
+    return r.items
+  },
+  recordPayment: (invoiceId: number, body: {
+    amount: number
+    method: 'CASH' | 'BANK_TRANSFER' | 'CARD_EXTERNAL' | 'OTHER'
+    reference?: string
+    note?: string
+  }) => api<PaymentRow>(`/invoices/${invoiceId}/payments`, 'POST', body),
+  downloadInvoicePdf: async (id: number) => {
+    const blob = await apiBlob(`/invoices/${id}/pdf`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `invoice-${id}.pdf`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
 
 }
