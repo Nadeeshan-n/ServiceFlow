@@ -148,4 +148,16 @@ export const providerService = {
   adminRejectProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/reject`, 'PATCH'),
   adminSuspendProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/suspend`, 'PATCH'),
 
+
+    // ---- Admin: service catalog ----
+  adminListServices: () => api<CatalogService[]>('/admin/services'),
+  adminCreateService: (body: { name: string; description?: string; category: string }) =>
+    api<CatalogService>('/admin/services', 'POST', body),
+  adminUpdateService: (id: number, body: { name?: string; description?: string; category?: string; is_active?: boolean }) =>
+    api<CatalogService>(`/admin/services/${id}`, 'PATCH', body),
+  adminDeactivateService: (id: number) =>
+    api<CatalogService>(`/admin/services/${id}/deactivate`, 'POST'),
+
+
+
 }
