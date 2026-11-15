@@ -60,19 +60,19 @@ def answer_policy_question(
     )
 
     client = genai.Client(api_key=api_key)
-    interaction = client.interactions.create(
+    response = client.models.generate_content(
         model=model_name,
-        input=prompt,
-        response_format={
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": ModelAnswer.model_json_schema(),
-        },
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=ModelAnswer,
+            temperature=0,
+        ),
     )
-    if not interaction.output_text:
+    if not response.text:
         raise RuntimeError("Gemini returned no answer")
 
-    result = ModelAnswer.model_validate_json(interaction.output_text)
+    result = ModelAnswer.model_validate_json(response.text)
 
     if result.status == "insufficient_evidence":
         return {
