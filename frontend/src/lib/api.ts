@@ -3,8 +3,19 @@ export const demoMode = import.meta.env.VITE_DEMO_MODE !== 'false'
 // Remaining workflow routes stay in demo mode until their backend APIs exist.
 export const liveApiMode = import.meta.env.VITE_USE_LIVE_API === 'true'
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
-let accessToken: string | null = null
-export function setAccessToken(value: string | null) { accessToken = value }
+
+const TOKEN_KEY = 'sf-access-token'
+let accessToken: string | null = (() => {
+  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
+})()
+export function setAccessToken(value: string | null) {
+  accessToken = value
+  try {
+    if (value) localStorage.setItem(TOKEN_KEY, value)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch { /* ignore */ }
+}
+
 export class ApiError extends Error {
   constructor(message: string, public status = 400, public fieldErrors: Record<string, string> = {}) { super(message) }
 }

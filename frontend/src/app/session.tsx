@@ -79,7 +79,10 @@ export function destination(user: User) {
   if (user.email_verified === false) return '/verify-email'
   if (user.must_change_password) return '/change-password'
   if (user.role === 'manager' && user.company_status !== 'APPROVED') return '/pending-verification'
-  return user.role === 'client' ? '/client' : '/workspace'
+  return user.role === 'client' ? '/client' :
+         user.role === 'manager' ? '/manager' :
+         user.role === 'employee' ? '/employee/jobs' :
+         user.role === 'admin' ? '/admin' : '/workspace'
 }
 
 export function ClientGuard({ children }: { children: ReactNode }) {
