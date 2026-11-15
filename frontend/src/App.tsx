@@ -1,58 +1,66 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BrowserRouter,
   Routes,
   Route,
-  Navigate,
+  Link,
+  useParams,
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { AppSidebar, roleNav } from "./components";
+import {
+  ActionButton,
+  AppSidebar,
+  EmptyState,
+  Modal,
+  roleNav,
+  SelectField,
+  Skeleton,
+  StatusBadge,
+  SurfaceCard,
+  TextField,
+} from "./components";
+import { Notice, PageHeader } from "./components/client-shared";
+import { ClientShell } from "./components/layout/ClientShell";
+import { ClientGuard, SessionProvider } from "./app/session";
+import { DirectoryPage } from "./features/marketplace/DirectoryPage";
+import { LandingPage } from "./features/marketplace/LandingPage";
+import { CompanyPage } from "./features/marketplace/pages";
+import { AuthPage } from "./features/auth/AuthPage";
+import { ChangePasswordPage, WorkspacePage } from "./features/auth/pages";
+import {
+  EmailVerificationPage,
+  PasswordResetPage,
+  PendingVerificationPage,
+  ProviderOnboardingPage,
+} from "./features/auth/AccountFlows";
+import {
+  ClientDashboardPage,
+  LegacyClientRoute,
+  RequestEntryRoute,
+} from "./features/client/ClientDashboardPage";
+import { SharedExamples } from "./features/client/SharedExamples";
+import ManagerDashboard from "./features/manager/Dashboard";
+import RequestInbox from "./features/manager/Requests";
+import QuoteBuilder from "./features/manager/QuoteBuilder";
+import ManagerJobs from "./features/manager/Jobs";
+import ManagerSchedule from "./features/manager/Schedule";
+import Invoices from "./features/manager/Invoices";
+import ManagerTeam from "./features/manager/Team";
+import PolicyPage from "./features/manager/PolicyPage";
+import CompanyProfilePage from "./features/manager/CompanyProfile";
+import EmployeeJobs from "./features/employee/Jobs";
+import EmployeeJobDetail from "./features/employee/JobDetail";
+import AdminCompanies from "./features/admin/Companies";
+import AdminCatalog from "./features/admin/Catalog";
+import "./styles/client.css";
 
 type Role = "manager" | "employee" | "admin";
 
-//const ManagerHome = () => <h1>ManagerHome</h1>;
-import ManagerDashboard from "./features/manager/Dashboard";
-
-//const RequestInbox = () => <h1>RequestInbox</h1>;
-import RequestInbox from "./features/manager/Requests";
-
-//const QuoteBuilder = () => <h1>QuoteBuilder</h1>;
-import QuoteBuilder from "./features/manager/QuoteBuilder";
-
-
-//const ManagerJobs = () => <h1>ManagerJobs</h1>;
-import ManagerJobs from "./features/manager/Jobs";
-
-//const ManagerSchedule = () => <h1>ManagerSchedule</h1>;
-import ManagerSchedule from "./features/manager/Schedule";
-
-//const ManagerInvoices = () => <h1>ManagerInvoices</h1>;
-import Invoices from "./features/manager/Invoices";
-
-//const ManagerTeam = () => <h1>ManagerTeam</h1>;
-import ManagerTeam from "./features/manager/Team";
-
-//const PolicyPage = () => <h1>PolicyPage</h1>;
-import PolicyPage from "./features/manager/PolicyPage";
-
-import CompanyProfilePage from "./features/manager/CompanyProfile";
-
 const EmployeeHome = () => <h1>EmployeeHome</h1>;
-
-//const EmployeeJobs = () => <h1>EmployeeJobs</h1>;
-import EmployeeJobs from "./features/employee/Jobs";
-
-//const EmployeeJobDetail = () => <h1>EmployeeJobDetail</h1>;
-import EmployeeJobDetail from "./features/employee/JobDetail";
 
 const EmployeeSchedule = () => <h1>EmployeeSchedule</h1>;
 const AdminHome = () => <h1>AdminHome</h1>;
-
-//const AdminCompanies = () => <h1>AdminCompanies</h1>;
-import AdminCompanies from "./features/admin/Companies";
-
-import AdminCatalog from "./features/admin/Catalog";
 
 const AdminSettings = () => <h1>AdminSettings</h1>;
 
@@ -91,9 +99,35 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
 }
 
 export default function App() {
-  return (
-    <BrowserRouter>
+  return <BrowserRouter>
+    <SessionProvider>
       <Routes>
+        <Route element={<ClientShell />}>
+          <Route index element={<LandingPage />} />
+          <Route path="services" element={<DirectoryPage />} />
+          <Route path="companies" element={<DirectoryPage />} />
+          <Route path="companies/:id" element={<CompanyRoute />} />
+          <Route path="companies/:id/request" element={<ClientGuard><RequestEntryRoute /></ClientGuard>} />
+          <Route path="login" element={<AuthPage />} />
+          <Route path="register" element={<AuthPage register />} />
+          <Route path="verify-email" element={<EmailVerificationPage />} />
+          <Route path="pending-verification" element={<PendingVerificationPage />} />
+          <Route path="account-status" element={<PendingVerificationPage />} />
+          <Route path="password-reset" element={<PasswordResetPage />} />
+          <Route path="provider-onboarding" element={<ProviderOnboardingPage />} />
+          <Route path="change-password" element={<ChangePasswordPage />} />
+          <Route path="workspace" element={<WorkspacePage />} />
+          <Route path="style-guide" element={<StyleGuidePage />} />
+          <Route path="client" element={<ClientGuard><ClientDashboardPage /></ClientGuard>} />
+          {(['requests', 'quotations', 'jobs', 'invoices', 'profile'] as const).map(tab => (
+            <Route key={tab} path={`client/${tab}`} element={<ClientGuard><LegacyClientRoute tab={tab} /></ClientGuard>} />
+          ))}
+          {(['requests', 'quotations', 'jobs', 'invoices'] as const).map(tab => (
+            <Route key={tab} path={`client/${tab}/:id`} element={<ClientGuard><LegacyClientRoute tab={tab} /></ClientGuard>} />
+          ))}
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+
         <Route path="/manager" element={<Shell role="manager"><ManagerDashboard /></Shell>} />
         <Route path="/manager/requests" element={<Shell role="manager"><RequestInbox /></Shell>} />
         <Route path="/manager/quotations" element={<Shell role="manager"><RequestInbox /></Shell>} />
@@ -114,9 +148,20 @@ export default function App() {
         <Route path="/admin/companies" element={<Shell role="admin"><AdminCompanies /></Shell>} />
         <Route path="/admin/catalog" element={<Shell role="admin"><AdminCatalog /></Shell>} />
         <Route path="/admin/settings" element={<Shell role="admin"><AdminSettings /></Shell>} />
-
-        <Route path="/" element={<Navigate to="/manager" replace />} />
       </Routes>
-    </BrowserRouter>
-  );
+    </SessionProvider>
+  </BrowserRouter>
 }
+function StyleGuidePage() {
+  const [modal, setModal] = useState(false)
+  return <><PageHeader eyebrow="SHARED UI · MEMBER 1" title="The ServiceFlow toolkit" description="One shared component library for public, client and operational screens. All examples below use sample content." /><div className="grid items-start gap-6 lg:grid-cols-2"><SurfaceCard className="space-y-5 p-6"><h2 className="sf-display text-xl font-semibold">Actions</h2><div className="flex flex-wrap gap-4"><ActionButton variant="stamp" onClick={() => setModal(true)}>Open example dialog</ActionButton><ActionButton>Secondary</ActionButton><ActionButton variant="void">Destructive</ActionButton><ActionButton disabled>Unavailable</ActionButton></div><Notice>Use the yellow stamp for the primary action. Pair destructive actions with confirmation.</Notice></SurfaceCard><SurfaceCard className="space-y-5 p-6"><h2 className="sf-display text-xl font-semibold">Form fields</h2><TextField label="Service address" placeholder="Enter your address" /><TextField label="Email address" error="Enter a valid email address." defaultValue="sample" /><SelectField label="Service"><option>Basic inspection</option></SelectField><TextField label="Unavailable field" disabled value="Not editable" /></SurfaceCard><SurfaceCard className="space-y-5 p-6"><h2 className="sf-display text-xl font-semibold">Status vocabulary</h2><div className="flex flex-wrap gap-3">{(['awaiting', 'approved', 'declined', 'scheduled', 'in_progress', 'completed', 'paid', 'unpaid', 'cancelled'] as const).map(status => <StatusBadge key={status} status={status} />)}</div><p className="text-sm text-text-secondary">Use the backend state and a text label. A status color alone is insufficient.</p></SurfaceCard><SurfaceCard className="space-y-5 p-6"><h2 className="sf-display text-xl font-semibold">Feedback</h2><Skeleton rows={2} /><Notice error>Sample error: this appointment is no longer available.</Notice><EmptyState title="No requests yet" description="Your service requests will appear here." /></SurfaceCard></div><SharedExamples /><Modal open={modal} title="Example confirmation" description="This demonstrates the shared keyboard-accessible dialog." onClose={() => setModal(false)}><ActionButton variant="stamp" onClick={() => setModal(false)}>Close example</ActionButton></Modal></>
+}
+function CompanyRoute() {
+  const { id } = useParams()
+  return <CompanyPage key={id} />
+}
+
+function NotFoundPage() {
+  return <><PageHeader title="We couldn’t find that page" description="The link may have changed or the record may be unavailable." /><Link className="sf-link" to="/services">Browse services →</Link></>
+}
+
