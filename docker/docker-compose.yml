@@ -24,5 +24,20 @@ services:
       timeout: 5s
       retries: 10
 
+  mcp:
+    build:
+      context: ..
+      dockerfile: mcp_server/Dockerfile
+    restart: unless-stopped
+    environment:
+      MCP_DB_HOST: db
+      MCP_DB_NAME: ${POSTGRES_DB}
+      MCP_DB_PASSWORD: ${MCP_DB_PASSWORD:-}
+      MCP_SIGNING_KEY: ${MCP_SIGNING_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    # No published port: only containers on this Compose network can reach MCP.
+
 volumes:
   serviceflow_pgdata:
