@@ -39,5 +39,30 @@ services:
         condition: service_healthy
     # No published port: only containers on this Compose network can reach MCP.
 
+  backend:
+    profiles: ["ai"]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile.ai
+    env_file:
+      - ../backend/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      MCP_URL: http://mcp:8001/mcp
+      MCP_SIGNING_KEY: ${MCP_SIGNING_KEY:-}
+    volumes:
+      - ../backend/storage:/srv/backend/storage
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      mcp:
+        condition: service_started
+
 volumes:
   serviceflow_pgdata:

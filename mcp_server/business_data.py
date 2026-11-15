@@ -104,5 +104,7 @@ def read_rows(
     return {
         "total_count": total,
         "limit": limit,
+        "start_date": start.date().isoformat(),
+        "end_date": (end - timedelta(days=1)).date().isoformat(),
         "items": [{key: _json_value(value) for key, value in row.items()} for row in rows],
     }
