@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from "react";
+import { useSession } from "./app/session";
+
 import {
   BrowserRouter,
   Routes,
@@ -65,6 +67,7 @@ const AdminHome = () => <h1>AdminHome</h1>;
 const AdminSettings = () => <h1>AdminSettings</h1>;
 
 function Shell({ role, children }: { role: Role; children: ReactNode }) {
+  const { user } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const items = roleNav[role];
@@ -89,7 +92,7 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
       <AppSidebar
         items={items}
         activeHref={activeHref}
-        userName="Chamari"
+        userName={user?.name ?? "Amizka"}
         subtitle={subtitleMap[role]}
         onNavigate={(href) => navigate(href)}
       />
