@@ -2,6 +2,7 @@ import { api, apiUpload } from './api'
 import type {
   CatalogService, PolicyUploadResult, Provider, ProviderOffering,
   ServiceArea, WorkingHour,
+  RequestRow, RequestMessage, QuotationItem, QuotationRow,
 } from '../types/provider'
 
 export const providerService = {
@@ -26,4 +27,30 @@ export const providerService = {
     api<WorkingHour[]>('/providers/me/working-hours', 'PUT', hours),
 
   uploadPolicy: (form: FormData) => apiUpload<PolicyUploadResult>('/policies/upload', form),
+
+  // ---- Requests ----
+  listIncomingRequests: (status?: string) =>
+    api<{ items: RequestRow[]; total: number }>(`/requests${status ? `?status=${status}` : ''}`),
+  getRequest: (id: number) => api<RequestRow>(`/requests/${id}`),
+  reviewRequest: (id: number) => api(`/requests/${id}/review`, 'POST'),
+  requestInformation: (id: number, body: string) =>
+    api(`/requests/${id}/request-information`, 'POST', { message: body }),
+  rejectRequest: (id: number, reason: string) =>
+    api(`/requests/${id}/reject`, 'POST', { reason }),
+
+  // ---- Messages ----
+  listMessages: (id: number) => api<RequestMessage[]>(`/requests/${id}/messages`),
+  sendMessage: (id: number, body: string) =>
+    api(`/requests/${id}/messages`, 'POST', { body }),
+
+  // ---- Quotations ----
+  listQuotations: (requestId: number) =>
+    api<QuotationRow[]>(`/requests/${requestId}/quotations`),
+  createQuotation: (requestId: number, body: {
+    items: QuotationItem[]
+    valid_until: string
+    downpayment_amount?: number
+  }) => api<QuotationRow>(`/requests/${requestId}/quotations`, 'POST', body),
+  sendQuotation: (quotationId: number) =>
+    api(`/quotations/${quotationId}`, 'PATCH', { status: 'SENT' }),
 }

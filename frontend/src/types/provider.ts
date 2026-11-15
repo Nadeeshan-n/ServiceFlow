@@ -37,3 +37,37 @@ export type PolicyUploadResult = {
   message?: string
   status?: string
 }
+
+export type RequestRow = {
+  id: number
+  status: string
+  description: string
+  address: string
+  preferred_date: string
+  preferred_time?: string | null
+  service_id: number
+  client_id: number
+  created_at?: string
+}
+
+export type RequestMessage = {
+  id: number
+  body: string
+  sender_id: number
+  created_at: string
+}
+
+export type QuotationItem = {
+  description: string
+  quantity: number
+  unit_price: number
+}
+
+export type QuotationRow = {
+  id: number
+  request_id: number
+  status: string
+  total_amount: number
+  valid_until?: string
+  items: QuotationItem[]
+}
