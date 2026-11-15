@@ -62,6 +62,7 @@ app.include_router(invoices_router)
 app.include_router(payments_router)
 app.include_router(admin_providers_router)
 app.include_router(notifications_router)
+app.include_router(providers_router, prefix="/providers", tags=["Providers"])
 
 
 @app.get("/health", tags=["Health"])
