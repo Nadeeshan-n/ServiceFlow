@@ -217,11 +217,45 @@ export function EmptyState({ title, description, children }: {title:string;descr
 export function Skeleton({ rows=3 }: {rows?:number}) {
   return <div role="status" aria-label="Loading" className="sf-card space-y-3 p-5"><span className="sr-only">Loading</span>{Array.from({length:rows},(_,i)=><div key={i} aria-hidden="true" className="sf-skeleton h-4 rounded-docket" style={{width:i%2?'70%':'95%'}}/>)}</div>
 }
-export function FlowAIPanel({ question, answer, source, page, loading=false }: {question:string;answer?:string;source?:string;page?:number;loading?:boolean}) {
-  return <SurfaceCard className="max-w-xl p-5"><h3 className="sf-display flex items-center gap-2 font-bold"><Sparkles className="text-[#6E5600]" size={18} aria-hidden="true"/>Flow AI</h3>
-    <div className="mt-4 flex gap-2 rounded-docket border border-line bg-paper p-3 text-sm"><MessageCircleQuestion className="shrink-0" size={17} aria-hidden="true"/>{question}</div>
-    {loading?<div className="mt-4"><Skeleton rows={2}/></div>:<><div className="mt-4 flex gap-2 text-sm"><Sparkles className="shrink-0 text-[#6E5600]" size={17} aria-hidden="true"/><p>{answer ?? 'The uploaded policy document does not provide enough evidence to answer this question.'}</p></div>
-    {answer && source && page != null && <div className="sf-mono mt-4 inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary"><FileSearch size={15} aria-hidden="true"/>Source: {source} · Page {page}</div>}</>}
+export function FlowAIPanel({ question, answer, source, page, citations, loading=false }: {
+  question:string;
+  answer?:string;
+  source?:string;
+  page?:number;
+  citations?: Array<{ source: string; page: number }>;
+  loading?:boolean;
+}) {
+  return <SurfaceCard className="max-w-xl p-5">
+    <h3 className="sf-display flex items-center gap-2 font-bold">
+      <Sparkles className="text-[#6E5600]" size={18} aria-hidden="true"/>Flow AI
+    </h3>
+    <div className="mt-4 flex gap-2 rounded-docket border border-line bg-paper p-3 text-sm">
+      <MessageCircleQuestion className="shrink-0" size={17} aria-hidden="true"/>{question}
+    </div>
+    {loading ? (
+      <div className="mt-4"><Skeleton rows={2}/></div>
+    ) : (
+      <>
+        <div className="mt-4 flex gap-2 text-sm">
+          <Sparkles className="shrink-0 text-[#6E5600]" size={17} aria-hidden="true"/>
+          <p>{answer ?? 'The uploaded policy document does not provide enough evidence to answer this question.'}</p>
+        </div>
+        {citations && citations.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {citations.map((c, i) => (
+              <div key={i} className="sf-mono inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary">
+                <FileSearch size={15} aria-hidden="true"/>Source: {c.source} · Page {c.page}
+              </div>
+            ))}
+          </div>
+        )}
+        {(!citations || citations.length === 0) && answer && source && page != null && (
+          <div className="sf-mono mt-4 inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary">
+            <FileSearch size={15} aria-hidden="true"/>Source: {source} · Page {page}
+          </div>
+        )}
+      </>
+    )}
   </SurfaceCard>
 }
 export const icons = { Plus,Pencil,Eye,ListFilter,Download,Upload,Ellipsis,Banknote,CalendarDays,Clock3,MapPin,ChevronDown }

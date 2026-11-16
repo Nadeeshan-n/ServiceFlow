@@ -1,56 +1,67 @@
 export const demoMode = import.meta.env.VITE_DEMO_MODE !== 'false'
-// Enables the routes already available from the shared Tailscale API.
-// Remaining workflow routes stay in demo mode until their backend APIs exist.
 export const liveApiMode = import.meta.env.VITE_USE_LIVE_API === 'true'
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
-
-const TOKEN_KEY = 'sf-access-token'
-let accessToken: string | null = (() => {
-  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
-})()
-export function setAccessToken(value: string | null) {
-  accessToken = value
-  try {
-    if (value) localStorage.setItem(TOKEN_KEY, value)
-    else localStorage.removeItem(TOKEN_KEY)
-  } catch { /* ignore */ }
-}
+let accessToken: string | null = null
+export function setAccessToken(value: string | null) { accessToken = value }
 
 export class ApiError extends Error {
-  constructor(message: string, public status = 400, public fieldErrors: Record<string, string> = {}) { super(message) }
+  constructor(message: string, public status = 400, public fieldErrors: Record<string, string> = {}){ super(message) }
 }
-export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+
+type ApiOptions = { timeout?: number; isFormData?: boolean }
+
+function authHeaders(extra: Record<string, string> = {}) {
+  return { ...extra, ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }
+}
+
+export async function api<T>(
+  path: string,
+  method = 'GET',
+  body?: unknown,
+  options: ApiOptions = {}
+): Promise<T> {
+  const timeout = options.timeout ?? 20000
   let response: Response
   try {
     response = await fetch(baseUrl + path, {
-      method, headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(20000)
+      method,
+      headers: authHeaders(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(timeout),
     })
-  } catch { throw new ApiError('Cannot reach ServiceFlow. Check your connection and try again.', 0) }
+  } catch {
+    throw new ApiError('Cannot reach ServiceFlow. Check your connection and try again.', 0)
+  }
   const data = await response.json().catch(() => null)
   if (!response.ok) {
     const raw = data?.field_errors ?? {}
-    const fields = Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value.join(' ') : String(value)]))
+    const fields = Object.fromEntries(
+      Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value.join(' ') : String(value)])
+    )
     if (Array.isArray(data?.detail)) {
       for (const issue of data.detail) {
         const key = issue.loc?.filter((part: unknown) => part !== 'body').join('.')
         if (key && typeof issue.msg === 'string') fields[key] = issue.msg
       }
     }
-    const message = data?.message || (typeof data?.detail === 'string' ? data.detail : undefined)
+    const message = data?.message
+      || (typeof data?.detail === 'string' ? data.detail : undefined)
       || (response.status === 422 ? 'Please check the highlighted fields.' : 'This action could not be completed. Refresh and try again.')
+    if (response.status === 401) {
+      accessToken = null
+      try { window.localStorage.removeItem('sf_token') } catch {}
+    }
     throw new ApiError(message, response.status, fields)
   }
   return data as T
 }
-
 
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   let response: Response
   try {
     response = await fetch(baseUrl + path, {
       method: 'POST',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      headers: authHeaders(),
       body: form,
       signal: AbortSignal.timeout(60000),
     })
@@ -59,10 +70,10 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   }
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new ApiError(
-      data?.message || (typeof data?.detail === 'string' ? data.detail : 'Upload failed'),
-      response.status,
-    )
+    const message = data?.message
+      || (typeof data?.detail === 'string' ? data.detail : undefined)
+      || 'Upload failed.'
+    throw new ApiError(message, response.status)
   }
   return data as T
 }
@@ -71,15 +82,12 @@ export async function apiBlob(path: string): Promise<Blob> {
   let response: Response
   try {
     response = await fetch(baseUrl + path, {
-      method: 'GET',
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-      signal: AbortSignal.timeout(30000),
+      headers: authHeaders(),
+      signal: AbortSignal.timeout(60000),
     })
   } catch {
-    throw new ApiError('Cannot reach ServiceFlow. Check your connection.', 0)
+    throw new ApiError('Cannot reach ServiceFlow.', 0)
   }
-  if (!response.ok) {
-    throw new ApiError('Download failed. Refresh and try again.', response.status)
-  }
+  if (!response.ok) throw new ApiError('Download failed.', response.status)
   return response.blob()
 }
