@@ -1,15 +1,21 @@
 import { demoAccount, requireDemo } from './demo-account'
-import { api, ApiError, demoMode, liveApiMode, setAccessToken } from './api'
-import type { Company, Invoice, Job, PolicyAnswer, Quote, RequestInput, RequestRecord, Session, User, Role } from '../types/client'
+import { api, ApiError, demoMode, liveApiMode, setAccessToken, uploadFile } from './api'
+import type { Company, Invoice, Job, PolicyAnswer, Quote, RequestInput, RequestMessage, RequestRecord, Session, User, Role } from '../types/client'
 
 type BackendUser = Omit<User, 'id' | 'role'> & { id: string | number; role: string }
 type ApiProviderSummary = { id: number; name: string; description?: string | null; accepting_requests?: boolean; rating?: number | null; completed_jobs?: number | null; starting_price?: number | null }
-type ApiProviderDetail = ApiProviderSummary & { type?: string; email?: string | null; phone?: string | null; address?: string | null; areas?: unknown[]; services?: { id: number; service_id: number; service_name: string; description?: string | null; starting_price: number }[] }
+type ApiProviderDetail = ApiProviderSummary & { type?: string; email?: string | null; phone?: string | null; address?: string | null; areas?: unknown[]; review_count?: number; policies?: { id: number; title: string; policy_type: string }[]; services?: { id: number; service_id: number; service_name: string; description?: string | null; starting_price: number }[] }
 type ApiService = { id: number; name: string; category?: string | null }
-type ApiRequest = { id: number; client_id: number; provider_id: number; service_id: number; description: string; preferred_date: string; preferred_time?: string | null; address: string; latitude?: number | null; longitude?: number | null; status: string }
+type ApiRequest = { id: number; client_id: number; provider_id: number; service_id: number; description: string; preferred_date: string; preferred_time?: string | null; address: string; latitude?: number | null; longitude?: number | null; status: string; attachments?: { id: number; request_id: number; file_name: string; content_type: string; created_at: string }[] }
 type ApiRequestList = { items: ApiRequest[]; total: number; limit: number; offset: number }
 type ApiQuotationItem = { description: string; quantity: number | string; unit_price: number | string }
 type ApiQuotation = { id: number; request_id: number; status: string; total_amount: number | string; items: ApiQuotationItem[] }
+type ApiJob = { id: number; request_id: number; quotation_id: number; provider_id: number; schedule_date?: string | null; schedule_time?: string | null; schedule_status: string; status: string }
+type ApiJobList = { items: ApiJob[]; total: number; limit: number; offset: number }
+type ApiInvoice = { id: number; job_id: number; invoice_number: string; total_amount: number | string; downpayment_amount: number | string; paid_amount: number | string; payment_status: string }
+type ApiInvoiceList = { items: ApiInvoice[]; total: number; limit: number; offset: number }
+type ApiMessage = { id: number; request_id: number; sender_user_id: number; message_text: string; created_at: string }
+type ApiMessageList = { items: ApiMessage[]; total: number; limit: number; offset: number }
 function normalizeUser(value: BackendUser): User {
   const roles: Record<string, Role> = { CLIENT: 'client', COMPANY_MANAGER: 'manager', EMPLOYEE: 'employee', SYSTEM_ADMIN: 'admin', client: 'client', manager: 'manager', employee: 'employee', admin: 'admin' }
   const role = roles[value.role]
@@ -29,7 +35,8 @@ function providerDetail(value: ApiProviderDetail): Company {
   const areas = (value.areas || []).map(area => typeof area === 'string' ? area : '').filter(Boolean)
   return {
     ...providerSummary(value), location: value.address || areas.join(', ') || 'Service area available on request',
-    phone: value.phone || '', email: value.email || '',
+    phone: value.phone || '', email: value.email || '', rating: value.rating ?? null, review_count: value.review_count ?? 0,
+    policies: (value.policies || []).map(policy => ({ id: policy.id, title: policy.title, policy_type: policy.policy_type })),
     focus_areas: areas,
     offerings: (value.services || []).map(service => ({
       id: String(service.service_id), name: service.service_name, starting_price: Number(service.starting_price), active: true,
@@ -46,8 +53,39 @@ function requestRecord(value: ApiRequest, providers: Map<number, ApiProviderSumm
     description: value.description, address: value.address, preferred_date: value.preferred_date,
     preferred_time: value.preferred_time || undefined, latitude: value.latitude ?? undefined, longitude: value.longitude ?? undefined,
     status: value.status as RequestRecord['status'],
+    attachments: (value.attachments || []).map(attachment => ({ id: String(attachment.id), file_name: attachment.file_name, content_type: attachment.content_type, created_at: attachment.created_at })),
   }
 }
+
+function normalizeJob(value: ApiJob, record?: RequestRecord): Job {
+  const status = value.schedule_status === 'PENDING' && value.status === 'JOB_CREATED' ? 'SCHEDULE_PROPOSED' : value.schedule_status === 'CONFIRMED' && value.status === 'JOB_CREATED' ? 'SCHEDULE_CONFIRMED' : value.status as Job['status']
+  return {
+    id: String(value.id), request_id: String(value.request_id),
+    company_name: record?.company_name || 'Service provider', service: record?.service || 'Requested service',
+    status, appointment: value.schedule_date && value.schedule_time ? `${value.schedule_date}T${value.schedule_time}+05:30` : undefined,
+    address: record?.address || '',
+  }
+}
+
+function normalizeInvoice(value: ApiInvoice, job?: Job): Invoice {
+  return {
+    id: String(value.id), job_id: String(value.job_id),
+    company_name: job?.company_name || 'Service provider', service: job?.service || 'Requested service',
+    total: Number(value.total_amount), status: value.payment_status as Invoice['status'], items: [],
+    invoice_number: value.invoice_number, downpayment_amount: Number(value.downpayment_amount), paid_amount: Number(value.paid_amount),
+  }
+}
+
+function normalizeMessage(value: ApiMessage): RequestMessage {
+  return { id: String(value.id), request_id: String(value.request_id), sender_user_id: String(value.sender_user_id), message_text: value.message_text, created_at: value.created_at }
+}
+
+async function dataUrlToFile(photo: { name: string; type: string; data_url: string }): Promise<File> {
+  const blob = await fetch(photo.data_url).then(response => response.blob())
+  return new File([blob], photo.name, { type: photo.type || blob.type })
+}
+
+const demoMessages: Record<string, RequestMessage[]> = {}
 
 function normalizeQuote(value: ApiQuotation, record?: RequestRecord): Quote {
   return {
@@ -110,13 +148,13 @@ export const clientService = {
       const records = await api<ApiProviderSummary[]>('/providers?provider_type=COMPANY&limit=100')
       return records.map(providerSummary)
     }
-    if (!demoMode) return api('/companies')
-    await wait(); return copy(companies.map(publicCompany))
+    if (demoMode) { await wait(); return copy(companies.map(publicCompany)) }
+    throw new ApiError('The company directory needs the live API or demo mode. Turn on live mode or demo mode and try again.', 503)
   },
   async company(id: string): Promise<Company> {
     if (liveApiMode) return providerDetail(await api<ApiProviderDetail>(`/providers/${encodeURIComponent(id)}`))
-    if (!demoMode) return api(`/companies/${encodeURIComponent(id)}`)
-    await wait(); return copy(publicCompany(find(companies, id)))
+    if (demoMode) { await wait(); return copy(publicCompany(find(companies, id))) }
+    throw new ApiError('The company directory needs the live API or demo mode. Turn on live mode or demo mode and try again.', 503)
   },
   async login(email: string, password: string): Promise<Session> {
     if (liveApiMode || !demoMode) {
@@ -175,7 +213,11 @@ export const clientService = {
   async request(id: string): Promise<RequestRecord> {
     if (liveApiMode) {
       const [record, references] = await Promise.all([api<ApiRequest>(`/requests/${encodeURIComponent(id)}`), requestReferences()])
-      return requestRecord(record, references.providers, references.services)
+      const row = requestRecord(record, references.providers, references.services)
+      const quotations = await api<ApiQuotation[]>(`/requests/${encodeURIComponent(id)}/quotations`).catch(() => [] as ApiQuotation[])
+      const open = quotations.find(quotation => quotation.status === 'SENT') || quotations[0]
+      if (open) row.quotation_id = String(open.id)
+      return row
     }
     if (!demoMode) return api(`/requests/${encodeURIComponent(id)}`); await wait(); return copy(find(requests.filter(row => row.client_id === demoAccount.id()), id))
   },
@@ -188,7 +230,15 @@ export const clientService = {
         latitude: input.latitude, longitude: input.longitude,
       })
       const references = await requestReferences()
-      return requestRecord(saved, references.providers, references.services)
+      const row = requestRecord(saved, references.providers, references.services)
+      const photos = input.photos || []
+      let failed = 0
+      for (const photo of photos) {
+        try { await uploadFile(`/requests/${encodeURIComponent(row.id)}/attachments`, await dataUrlToFile(photo)) }
+        catch { failed += 1 }
+      }
+      if (failed) throw new ApiError(`Your request ${row.id} was created, but ${failed} photo${failed > 1 ? 's' : ''} could not be uploaded. Open the request and try again from the request page.`, 502)
+      return row
     }
     if (!demoMode) return api('/requests', 'POST', input)
     await wait(); const company = find(companies, input.company_id); const offer = find(company.offerings, input.company_service_id)
@@ -202,7 +252,11 @@ export const clientService = {
     row.status = 'CANCELLED'; if (row.quotation_id) find(quotes, row.quotation_id).status = 'CANCELLED'
   },
   async quotes(): Promise<Quote[]> {
-    if (liveApiMode || !demoMode) { const records = await clientService.requests(); const ids = [...new Set(records.flatMap(r => r.quotation_id ? [r.quotation_id] : []))]; return Promise.all(ids.map(id => clientService.quote(id))) }
+    if (liveApiMode || !demoMode) {
+      const records = await clientService.requests()
+      const lists = await Promise.all(records.map(record => api<ApiQuotation[]>(`/requests/${encodeURIComponent(record.id)}/quotations`).catch(() => [] as ApiQuotation[])))
+      return lists.flatMap((values, index) => values.map(value => normalizeQuote(value, records[index])))
+    }
     await wait(); return copy(quotes.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id())))
   },
   async quote(id: string): Promise<Quote> {
@@ -223,26 +277,68 @@ export const clientService = {
       jobs.unshift({ id: `SF-JOB-${Date.now()}`, request_id: request.id, company_name: row.company_name, service: row.service, status: 'JOB_CREATED', address: request.address })
     } else { row.status = 'DECLINED'; request.status = 'DECLINED' }
   },
-  async jobs(): Promise<Job[]> { if (!demoMode) return api('/jobs'); await wait(); return copy(jobs.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id()))) },
-  async job(id: string): Promise<Job> { if (!demoMode) return api(`/jobs/${encodeURIComponent(id)}`); await wait(); return copy(find(await clientService.jobs(), id)) },
-  async decideSchedule(id: string, decision: 'approve' | 'decline') {
-    if (!demoMode) return api(`/jobs/${encodeURIComponent(id)}/schedule/${decision}`, 'POST')
+  async jobs(): Promise<Job[]> {
+    if (liveApiMode || !demoMode) {
+      const [list, records] = await Promise.all([api<ApiJobList>('/jobs?limit=100'), clientService.requests()])
+      const byRequest = new Map(records.map(record => [record.id, record]))
+      return list.items.map(value => normalizeJob(value, byRequest.get(String(value.request_id))))
+    }
+    await wait(); return copy(jobs.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id())))
+  },
+  async job(id: string): Promise<Job> {
+    if (liveApiMode || !demoMode) {
+      const value = await api<ApiJob>(`/jobs/${encodeURIComponent(id)}`)
+      const record = await clientService.request(String(value.request_id)).catch(() => undefined)
+      return normalizeJob(value, record)
+    }
+    await wait(); return copy(find(await clientService.jobs(), id))
+  },
+  async decideSchedule(id: string) {
+    if (liveApiMode || !demoMode) return api(`/jobs/${encodeURIComponent(id)}/schedule/approve`, 'POST')
     await wait(); const row = find(jobs, (await clientService.job(id)).id)
     if (row.status !== 'SCHEDULE_PROPOSED') throw new ApiError('The appointment has changed. Refresh before deciding.', 409)
-    row.status = decision === 'approve' ? 'SCHEDULE_CONFIRMED' : 'JOB_CREATED'
-    if (decision === 'decline') delete row.appointment
+    row.status = 'SCHEDULE_CONFIRMED'
   },
   async cancelJob(id: string, reason: string) {
-    if (!demoMode) return api(`/jobs/${encodeURIComponent(id)}/cancel`, 'POST', { reason })
+    if (liveApiMode || !demoMode) return api(`/jobs/${encodeURIComponent(id)}/cancel`, 'POST', { reason })
     await wait(); const row = find(jobs, (await clientService.job(id)).id)
     if (!['JOB_CREATED', 'SCHEDULE_PROPOSED', 'SCHEDULE_CONFIRMED'].includes(row.status)) throw new ApiError('Cancellation is only available before work starts.', 409)
     row.status = 'CANCELLED'; delete row.appointment
   },
-  async invoices(): Promise<Invoice[]> { if (!demoMode) return api('/invoices'); await wait(); const ownedJobs = await clientService.jobs(); return copy(invoices.filter(row => ownedJobs.some(job => job.id === row.job_id))) },
-  async invoice(id: string): Promise<Invoice> { if (!demoMode) return api(`/invoices/${encodeURIComponent(id)}`); await wait(); return copy(find(await clientService.invoices(), id)) },
-  async policy(companyId: string): Promise<{ title: string; url: string } | null> { if (!demoMode) return api(`/companies/${encodeURIComponent(companyId)}/policy`); await wait(); return null },
+  async invoices(): Promise<Invoice[]> {
+    if (liveApiMode || !demoMode) {
+      const [list, ownedJobs] = await Promise.all([api<ApiInvoiceList>('/invoices?limit=100'), clientService.jobs()])
+      const byJob = new Map(ownedJobs.map(job => [job.id, job]))
+      return list.items.map(value => normalizeInvoice(value, byJob.get(String(value.job_id))))
+    }
+    await wait(); const ownedJobs = await clientService.jobs(); return copy(invoices.filter(row => ownedJobs.some(job => job.id === row.job_id)))
+  },
+  async invoice(id: string): Promise<Invoice> {
+    if (liveApiMode || !demoMode) {
+      const value = await api<ApiInvoice>(`/invoices/${encodeURIComponent(id)}`)
+      const job = await clientService.job(String(value.job_id)).catch(() => undefined)
+      return normalizeInvoice(value, job)
+    }
+    await wait(); return copy(find(await clientService.invoices(), id))
+  },
+  async messages(id: string): Promise<RequestMessage[]> {
+    if (liveApiMode || !demoMode) {
+      const list = await api<ApiMessageList>(`/requests/${encodeURIComponent(id)}/messages?limit=100`)
+      return list.items.map(normalizeMessage)
+    }
+    await wait(); return copy(demoMessages[id] || [])
+  },
+  async sendMessage(id: string, text: string) {
+    const message = text.trim()
+    if (!message) throw new ApiError('Write a message before sending it.', 422)
+    if (liveApiMode || !demoMode) return normalizeMessage(await api<ApiMessage>(`/requests/${encodeURIComponent(id)}/messages`, 'POST', { message_text: message }))
+    await wait()
+    const row: RequestMessage = { id: `SF-MSG-${Date.now()}`, request_id: id, sender_user_id: demoAccount.me().id, message_text: message, created_at: new Date().toISOString() }
+    demoMessages[id] = [...(demoMessages[id] || []), row]
+    return copy(row)
+  },
   async ask(companyId: string, question: string): Promise<PolicyAnswer> {
-    if (!demoMode) return api('/ai/ask-docs', 'POST', { company_id: companyId, question })
+    if (!demoMode) throw new ApiError('Flow AI is available in demo mode only. Client access to the policy assistant has not been agreed yet.', 403)
     await wait(); return { status: 'NO_POLICY', answer: 'No public policy is available for this sample company. Answers will appear when a company policy is connected.', citations: [] }
   }
 }

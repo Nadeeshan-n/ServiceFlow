@@ -10,7 +10,6 @@ export { NewRequestPage } from './RequestForm'
 export function CompanyPage() {
   const { id = '' } = useParams()
   const resource = useResource(() => clientService.company(id), [id])
-  const policy = useResource(() => clientService.policy(id), [id])
   const company = resource.data
   return <Resource {...resource} retry={resource.reload}>
     {company && <>
@@ -36,15 +35,14 @@ export function CompanyPage() {
               {(company.focus_areas || [company.category]).map(area => <li key={area}>{area}</li>)}
             </ul>
             {company.completed_jobs !== undefined && <p className="font-semibold">{company.completed_jobs} completed {demoMode ? 'sample ' : ''}job(s)</p>}
+            {company.rating !== null && company.rating !== undefined && <p className="font-semibold">{company.rating.toFixed(1)} / 5 · {company.review_count || 0} review{(company.review_count || 0) === 1 ? '' : 's'}</p>}
           </SurfaceCard>
           <PublicFeedback companyId={id} />
         </div>
         <aside className="space-y-5">
           <SurfaceCard className="p-6">
             <h2 className="sf-display mb-3 text-xl font-semibold">Public policy</h2>
-            <Resource {...policy} retry={policy.reload}>
-              {policy.data ? <a href={policy.data.url} className="sf-link" target="_blank" rel="noreferrer">{policy.data.title} ↗</a> : <p className="text-sm text-text-secondary">This company has not published a public policy.</p>}
-            </Resource>
+            {(company.policies || []).length ? <ul className="space-y-2">{company.policies!.map(policy => <li key={policy.id} className="text-sm">{policy.title} <span className="text-text-secondary">· {policy.policy_type}</span></li>)}</ul> : <p className="text-sm text-text-secondary">This company has not published a public policy.</p>}
           </SurfaceCard>
           <SurfaceCard className="p-6"><ClientFlowAI key={id} companyId={id} /></SurfaceCard>
         </aside>

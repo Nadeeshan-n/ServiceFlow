@@ -4,6 +4,7 @@ import { ActionButton, FlowAIPanel, TextAreaField } from '../../components'
 import { Notice } from '../../components/client-shared'
 import { useSession } from '../../app/session'
 import { clientService } from '../../lib/client-service'
+import { demoMode } from '../../lib/api'
 import type { PolicyAnswer } from '../../types/client'
 
 export function ClientFlowAI({ companyId }: { companyId: string }) {
@@ -28,7 +29,8 @@ export function ClientFlowAI({ companyId }: { companyId: string }) {
   return <div className="space-y-5">
     <h2 className="sf-display text-xl font-semibold">Ask Flow AI</h2>
     <p className="text-sm text-text-secondary">Answers come from the selected company’s public policy PDF and include policy page citations.</p>
-    {user?.role === 'client' ? <form onSubmit={ask} className="space-y-4">
+    <Notice>Flow AI is available in demo mode only. Client access to the policy assistant has not been agreed yet.</Notice>
+    {!demoMode ? null : user?.role === 'client' ? <form onSubmit={ask} className="space-y-4">
       <TextAreaField label="Your policy question" required maxLength={1000} value={question} onChange={event => setQuestion(event.target.value)} />
       <ActionButton type="submit" variant="stamp" disabled={pending || !question.trim()}>{pending ? 'Checking policy…' : 'Ask question'}</ActionButton>
     </form> : <Link className="sf-link" to="/login">Sign in as a client to ask →</Link>}
