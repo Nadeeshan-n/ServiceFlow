@@ -71,3 +71,7 @@ button:disabled { cursor:not-allowed }
 .sf-skeleton { background:var(--sf-wash);animation:sf-pulse 1.4s ease-in-out infinite }
 @keyframes sf-pulse { 50% { opacity:.45 } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important;transition-duration:.01ms!important } }
+
+html[data-theme="dark"] .bg-paper { background-color:var(--sf-wash) }
+html[data-theme="dark"] .bg-white { background-color:var(--sf-surface) }
+html[data-theme="dark"] .text-red-700 { color:var(--sf-error) }
