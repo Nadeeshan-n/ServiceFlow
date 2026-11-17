@@ -34,6 +34,8 @@ services:
       MCP_DB_NAME: ${POSTGRES_DB}
       MCP_DB_PASSWORD: ${MCP_DB_PASSWORD:-}
       MCP_SIGNING_KEY: ${MCP_SIGNING_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_EMBEDDING_MODEL: gemini-embedding-001
     depends_on:
       db:
         condition: service_healthy
@@ -54,6 +56,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       MCP_URL: http://mcp:8001/mcp
       MCP_SIGNING_KEY: ${MCP_SIGNING_KEY:-}
+      GEMINI_EMBEDDING_MODEL: gemini-embedding-001
     volumes:
       - ../backend/storage:/srv/backend/storage
     ports:

@@ -69,8 +69,8 @@ def search(
         raise ValueError("top_k must be a positive integer")
     limit = min(top_k, 10)
     vector = encode(question)
-    if len(vector) != 384:
-        raise ValueError("Query embedding must have 384 dimensions")
+    if len(vector) != 768:
+        raise ValueError("Query embedding must have 768 dimensions")
 
     vector_rows = [dict(row) for row in connection.execute(
         VECTOR_SQL,

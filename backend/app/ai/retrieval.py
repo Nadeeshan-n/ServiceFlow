@@ -1,10 +1,5 @@
-import numpy as np
-from sentence_transformers import SentenceTransformer
-
+from app.ai.embeddings import embed_texts, embed_query
 from app.ai.ingestion import PolicyChunk
-
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-
 
 def search_chunks(
     question: str,
@@ -14,14 +9,9 @@ def search_chunks(
     if not chunks:
         return []
 
-    model = SentenceTransformer(MODEL_NAME)
     texts = [chunk.chunk_text for chunk in chunks]
-    vectors = model.encode(texts, normalize_embeddings=True)
-    question_vector = model.encode(question, normalize_embeddings=True)
-
-    if vectors.shape[1] != 384:
-        raise ValueError(f"Expected 384 dimensions, got {vectors.shape[1]}")
-
-    scores = np.asarray(vectors @ question_vector)
-    best_indices = np.argsort(scores)[::-1][:top_k]
-    return [(chunks[int(i)], float(scores[i])) for i in best_indices]
+    vectors = embed_texts(texts, task_type="RETRIEVAL_DOCUMENT")
+    question_vector = embed_query(question)
+    scores = [sum(x * y for x, y in zip(vector, question_vector)) for vector in vectors]
+    best_indices = sorted(range(len(chunks)), key=lambda i: scores[i], reverse=True)[:top_k]
+    return [(chunks[i], scores[i]) for i in best_indices]

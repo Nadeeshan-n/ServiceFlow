@@ -6,9 +6,10 @@ This service runs inside Docker Compose without a published port. It uses
 `search_policy_docs(query, top_k)` returns fused vector and keyword matches
 with document name, section, page, chunk ID, and policy ID. Both tools derive
 their provider from the verified token; neither accepts a provider argument.
-The search uses the same `all-MiniLM-L6-v2` normalized, 384-dimensional
-embeddings as ingestion. The Docker image includes the model for offline
-runtime use. `get_requests`, `get_quotations`, `get_jobs`, and
+The search uses the same pinned `gemini-embedding-001` model as ingestion,
+with normalized 768-dimensional embeddings. MCP needs `GEMINI_API_KEY` at
+runtime; see the embedding migration runbook before restarting either image.
+`get_requests`, `get_quotations`, `get_jobs`, and
 `get_unpaid_invoices` return bounded, provider-scoped business records and an
 exact `total_count` for the selected date range. Dates use UTC and default to
 the past 90 days; a requested range may span at most 366 days. `get_jobs` can

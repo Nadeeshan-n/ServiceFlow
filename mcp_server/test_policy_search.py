@@ -25,7 +25,7 @@ class Connection:
 class PolicySearchTests(unittest.TestCase):
     def test_both_queries_have_same_scope_and_return_deduplicated_source(self):
         connection = Connection()
-        rows = search(connection, 7, "Cancellation fee?", 50, lambda _: [0.0] * 384)
+        rows = search(connection, 7, "Cancellation fee?", 50, lambda _: [0.0] * 768)
         self.assertEqual([row["chunk_id"] for row in rows], [10])
         self.assertEqual(len(connection.calls), 2)
         for sql, params in connection.calls:
@@ -40,7 +40,7 @@ class PolicySearchTests(unittest.TestCase):
         connection = Connection()
         for question, limit in (("", 5), ("q" * 1001, 5), ("hello", 0)):
             with self.assertRaises(ValueError):
-                search(connection, 7, question, limit, lambda _: [0.0] * 384)
+                search(connection, 7, question, limit, lambda _: [0.0] * 768)
         self.assertEqual(connection.calls, [])
 
 

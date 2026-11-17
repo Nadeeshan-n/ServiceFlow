@@ -1,7 +1,6 @@
 """Internal, authenticated, read-only MCP access to ServiceFlow data."""
 
 import os
-from functools import lru_cache
 
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.jwt import JWTVerifier
@@ -10,6 +9,7 @@ from sqlalchemy import URL, create_engine, text
 
 from mcp_server.policy_search import search
 from mcp_server.business_data import read_rows
+from embeddings import embed_query
 
 
 def required(name: str) -> str:
@@ -54,17 +54,8 @@ def caller_provider_id() -> int:
     return provider_id
 
 
-@lru_cache(maxsize=1)
-def embedding_model():
-    from sentence_transformers import SentenceTransformer
-
-    return SentenceTransformer(os.environ.get(
-        "MCP_EMBEDDING_MODEL_PATH", "sentence-transformers/all-MiniLM-L6-v2"
-    ))
-
-
 def encode_question(question: str) -> list[float]:
-    return embedding_model().encode(question, normalize_embeddings=True).tolist()
+    return embed_query(question)
 
 
 @mcp.tool

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.policy import Policy
 from app.models.policy_chunk import PolicyChunk
-from app.ai.indexing import embedding_model
+from app.ai.embeddings import embed_query
 import re
 
 QUESTION_WORDS = {
@@ -63,9 +63,7 @@ def vector_search(
     provider_id: int,
     limit: int = 5,
 ) -> list[PolicyChunk]:
-    vector = embedding_model().encode(
-        question, normalize_embeddings=True
-    ).tolist()
+    vector = embed_query(question)
 
     statement = (
         select(PolicyChunk)
