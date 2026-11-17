@@ -145,3 +145,10 @@ html[data-theme="dark"] .sf-bottom-nav { background:var(--sf-surface) }
 html[data-theme="dark"] .sf-mobile-drawer { background:var(--sf-surface) }
 html[data-theme="dark"] .sf-scene-stamp { background:var(--sf-navy) }
 html[data-theme="dark"] .sf-brand-name-service { color:#EAF1F7 }
+
+.sf-sidebar-brand .sf-brand-name-service { color:#fff }
+html[data-theme="dark"] .sf-barcode { background:repeating-linear-gradient(90deg,var(--sf-ink) 0,var(--sf-ink) 2px,transparent 2px,transparent 4px,var(--sf-ink) 4px,var(--sf-ink) 5px,transparent 5px,transparent 8px) }
+html[data-theme="dark"] .sf-small-button-dark { color:var(--sf-navy) }
+html[data-theme="dark"] .sf-service-filters button[aria-pressed=true] { color:var(--sf-navy) }
+html[data-theme="dark"] .sf-avatar { color:var(--sf-navy) }
+html[data-theme="dark"] .sf-void:hover:not(:disabled) { color:var(--sf-navy) }

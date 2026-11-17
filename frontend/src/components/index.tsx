@@ -34,9 +34,9 @@ const statuses: Record<WorkflowStatus, { label: string; icon: LucideIcon; color:
   scheduled: { label:'Scheduled',icon:CalendarCheck2,color:'var(--sf-info)',bg:'var(--sf-info-bg)' },
   in_progress: { label:'In progress',icon:Play,color:'var(--sf-info)',bg:'var(--sf-info-bg)' },
   completed: { label:'Completed',icon:CheckCheck,color:'var(--sf-success)',bg:'var(--sf-success-bg)' },
-  paid: { label:'Paid',icon:BadgeCheck,color:'#fff',bg:'var(--sf-success)',solid:true },
+  paid: { label:'Paid',icon:BadgeCheck,color:'var(--sf-surface)',bg:'var(--sf-success)',solid:true },
   unpaid: { label:'Unpaid',icon:TriangleAlert,color:'var(--sf-warning)',bg:'var(--sf-warning-bg)' },
-  cancelled: { label:'Cancelled',icon:Ban,color:'#fff',bg:'var(--sf-cancelled)',solid:true }
+  cancelled: { label:'Cancelled',icon:Ban,color:'var(--sf-surface)',bg:'var(--sf-cancelled)',solid:true }
 }
 export function StatusBadge({ status, label }: { status: WorkflowStatus; label?: string }) {
   const config = statuses[status]; const Icon = config.icon
