@@ -34,6 +34,7 @@ services:
       MCP_DB_NAME: ${POSTGRES_DB}
       MCP_DB_PASSWORD: ${MCP_DB_PASSWORD:-}
       MCP_SIGNING_KEY: ${MCP_SIGNING_KEY:-}
+      MCP_DB_SSLMODE: ${MCP_DB_SSLMODE:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_EMBEDDING_MODEL: gemini-embedding-001
     depends_on:
