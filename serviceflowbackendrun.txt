@@ -13,3 +13,11 @@ docker exec -it serviceflow-db psql -U serviceflow -d serviceflow
 mcp
 cd D:\Work\ServiceFlow
 docker compose --env-file .\docker\.env -f .\docker\docker-compose.yml up --build -d mcp
+
+cd D:\Work\ServiceFlow
+docker compose --profile ai --env-file .\docker\.env -f .\docker\docker-compose.yml up -d backend
+docker compose --profile ai --env-file .\docker\.env -f .\docker\docker-compose.yml ps
+
+
+cd D:\Work\ServiceFlow
+docker compose --profile ai --env-file .\docker\.env -f .\docker\docker-compose.yml up -d --force-recreate backend

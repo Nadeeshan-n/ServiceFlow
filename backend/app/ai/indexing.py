@@ -1,20 +1,10 @@
-from functools import lru_cache
-
-from sentence_transformers import SentenceTransformer
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.ai.ingestion import extract_policy_chunks
+from app.ai.embeddings import embed_texts
 from app.models.policy import Policy
 from app.models.policy_chunk import PolicyChunk
-
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-
-
-@lru_cache(maxsize=1)
-def embedding_model() -> SentenceTransformer:
-    return SentenceTransformer(MODEL_NAME)
-
 
 def index_policy(policy_id: int, session: Session) -> int:
     """Replace chunks for an inactive policy.
@@ -33,12 +23,12 @@ def index_policy(policy_id: int, session: Session) -> int:
     if not chunks:
         raise ValueError("PDF contains no extractable text")
 
-    vectors = embedding_model().encode(
+    vectors = embed_texts(
         [chunk.chunk_text for chunk in chunks],
-        normalize_embeddings=True,
+        task_type="RETRIEVAL_DOCUMENT",
     )
-    if vectors.shape != (len(chunks), 384):
-        raise ValueError(f"Unexpected embedding shape: {vectors.shape}")
+    if len(vectors) != len(chunks):
+        raise ValueError("Embedding batch count did not match policy chunks")
 
     # Recheck after PDF processing. This lock serializes retries for this policy.
     locked_policy = session.execute(
@@ -67,7 +57,7 @@ def index_policy(policy_id: int, session: Session) -> int:
             section_title=getattr(chunk, "section_title", None),
             chunk_index=chunk.chunk_index,
             chunk_text=chunk.chunk_text,
-            embedding=vector.tolist(),
+            embedding=vector,
         )
         for chunk, vector in zip(chunks, vectors)
     )
