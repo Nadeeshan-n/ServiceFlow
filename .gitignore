@@ -27,6 +27,8 @@ htmlcov/
 *.sqlite3
 backend/storage/uploads/
 backend/storage/generated/
+backend/storage/sample-policy.pdf
+backend/storage/policies/
 
 # Editor and operating system files
 .vscode/
@@ -43,3 +45,24 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Local scratch scripts
+backend/test_indexing.py
+backend/test_retrieval.py
+backend/test_fusion_local.py
+backend/test_generation_local.py
+
+# Add these lines to your existing backend/.gitignore
+/storage/
+__pycache__/
+.pytest_cache/
+
+# Python cache directories
+__pycache__/
+.pytest_cache/
+# Add to existing backend/.gitignore
+/storage/job_records/
+__pycache__/
+.pytest_cache/
+# Uploaded files
+backend/storage/
