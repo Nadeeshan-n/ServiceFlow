@@ -27,6 +27,10 @@ auth = JWTVerifier(
 )
 mcp = FastMCP("ServiceFlow read-only tools", auth=auth)
 
+_db_query = (
+    {"sslmode": os.environ["MCP_DB_SSLMODE"]} if os.environ.get("MCP_DB_SSLMODE") else {}
+)
+
 engine = create_engine(
     URL.create(
         "postgresql+psycopg",
@@ -35,6 +39,7 @@ engine = create_engine(
         host=os.environ.get("MCP_DB_HOST", "db"),
         port=int(os.environ.get("MCP_DB_PORT", "5432")),
         database=os.environ.get("MCP_DB_NAME", "serviceflow"),
+        query=_db_query,
     ),
     pool_pre_ping=True,
     connect_args={"connect_timeout": 5},
@@ -124,4 +129,4 @@ def get_unpaid_invoices(status: str | None = None, start_date: str | None = None
 
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8001)
+    mcp.run(transport="http", host="0.0.0.0", port=int(os.environ.get("PORT", "8001")))

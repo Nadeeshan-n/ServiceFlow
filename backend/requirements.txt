@@ -42,3 +42,4 @@ pgvector
 PyMuPDF
 numpy
 google-genai
+boto3

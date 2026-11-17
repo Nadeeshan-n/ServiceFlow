@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.config import settings
 from app.database import engine
 
 from app.api.routes import auth
@@ -33,12 +34,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+    # Origins come from the CORS_ORIGINS env var (comma-separated) so the
+    # deployed frontend's origin can be set without a code change.
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        # add the Tailscale origin too if the frontend is opened via the
-        # machine's Tailscale IP or MagicDNS name, e.g.:
-        # "http://100.107.134.80:5173",
+        origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
