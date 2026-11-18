@@ -6,28 +6,16 @@ import AdminDashboard from "./features/admin/Dashboard";
 import AdminDisputes from "./features/admin/Disputes";
 import AdminAllRequestsJobs from "./features/admin/AllRequestsJobs";
 import { NotificationBell } from "./components/NotificationBell";
+import { FlowAIBubble } from "./components/FlowAIBubble";
+import PolicyPage from "./features/manager/PolicyPage";
 
 import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Link,
-  Navigate,
-  useParams,
-  useLocation,
-  useNavigate,
+  BrowserRouter, Routes, Route, Link, Navigate, useParams,
+  useLocation, useNavigate,
 } from "react-router-dom";
 import {
-  ActionButton,
-  AppSidebar,
-  EmptyState,
-  Modal,
-  roleNav,
-  SelectField,
-  Skeleton,
-  StatusBadge,
-  SurfaceCard,
-  TextField,
+  ActionButton, AppSidebar, EmptyState, Modal, roleNav, SelectField,
+  Skeleton, StatusBadge, SurfaceCard, TextField,
 } from "./components";
 import { Notice, PageHeader } from "./components/client-shared";
 import { ClientShell } from "./components/layout/ClientShell";
@@ -38,15 +26,10 @@ import { CompanyPage } from "./features/marketplace/pages";
 import { AuthPage } from "./features/auth/AuthPage";
 import { ChangePasswordPage, WorkspacePage } from "./features/auth/pages";
 import {
-  EmailVerificationPage,
-  PasswordResetPage,
-  PendingVerificationPage,
-  ProviderOnboardingPage,
+  EmailVerificationPage, PasswordResetPage, PendingVerificationPage, ProviderOnboardingPage,
 } from "./features/auth/AccountFlows";
 import {
-  ClientDashboardPage,
-  LegacyClientRoute,
-  RequestEntryRoute,
+  ClientDashboardPage, LegacyClientRoute, RequestEntryRoute,
 } from "./features/client/ClientDashboardPage";
 import { SharedExamples } from "./features/client/SharedExamples";
 import ManagerDashboard from "./features/manager/Dashboard";
@@ -106,6 +89,7 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
         </header>
         <main style={{ flex: 1, padding: 24 }}>{children}</main>
       </div>
+      <FlowAIBubble />
     </div>
   );
 }
@@ -159,8 +143,9 @@ export default function App() {
         <Route path="/manager/invoices" element={<RoleGuard role="manager"><Shell role="manager"><Invoices /></Shell></RoleGuard>} />
         <Route path="/manager/business" element={<RoleGuard role="manager"><Shell role="manager"><MyBusiness /></Shell></RoleGuard>} />
         <Route path="/manager/team" element={<RoleGuard role="manager"><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />
-        <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><FlowAIPlaceholder /></Shell></RoleGuard>} />
+        <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><PolicyPage /></Shell></RoleGuard>} />
         <Route path="/manager/company" element={<RoleGuard role="manager"><Navigate to="/manager/business" replace /></RoleGuard>} />
+        <Route path="/manager/disputes" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDisputes /></Shell></RoleGuard>} />
 
         <Route path="/employee" element={<RoleGuard role="employee"><Navigate to="/employee/jobs" replace /></RoleGuard>} />
         <Route path="/employee/jobs" element={<RoleGuard role="employee"><Shell role="employee"><EmployeeJobs /></Shell></RoleGuard>} />
@@ -173,26 +158,9 @@ export default function App() {
         <Route path="/admin/requests" element={<RoleGuard role="admin"><Shell role="admin"><AdminAllRequestsJobs /></Shell></RoleGuard>} />
         <Route path="/admin/disputes" element={<RoleGuard role="admin"><Shell role="admin"><AdminDisputes /></Shell></RoleGuard>} />
         <Route path="/admin/settings" element={<RoleGuard role="admin"><Shell role="admin"><AdminSettingsPlaceholder /></Shell></RoleGuard>} />
-        <Route path="/manager/disputes" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDisputes /></Shell></RoleGuard>} />
-     </Routes>
+      </Routes>
     </SessionProvider>
   </BrowserRouter>
-}
-
-function FlowAIPlaceholder() {
-  return <div>
-    <PageHeader title="Flow AI" description="Ask questions about your policies and business data." />
-    <SurfaceCard className="max-w-2xl p-5">
-      <p className="text-sm text-text-secondary">
-        Flow AI is being built by Member 4. The panel will appear here once the
-        {' '}<code>/ai/ask-docs</code> and <code>/ai/ask-data</code> endpoints are live.
-      </p>
-      <p className="mt-3 text-sm text-text-secondary">
-        In the meantime, upload policies in <Link className="sf-link" to="/manager/business">My Business → Policies</Link> so
-        the AI has documents to reference when it launches.
-      </p>
-    </SurfaceCard>
-  </div>
 }
 
 function AdminSettingsPlaceholder() {
@@ -217,5 +185,5 @@ function CompanyRoute() {
 }
 
 function NotFoundPage() {
-  return <><PageHeader title="We couldn’t find that page" description="The link may have changed or the record may be unavailable." /><Link className="sf-link" to="/services">Browse services →</Link></>
+  return <><PageHeader title="We couldn't find that page" description="The link may have changed or the record may be unavailable." /><Link className="sf-link" to="/services">Browse services →</Link></>
 }

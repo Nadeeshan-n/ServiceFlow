@@ -137,18 +137,7 @@ export function ProviderCard({ initials, name, category, location, rating, start
 export type NavItem = {label:string;href:string;icon:NavIcon;count?:number}
 export const roleNav: Record<'client'|'manager'|'employee'|'admin',NavItem[]> = {
   client:[{label:'Dashboard',href:'/client',icon:'dashboard'},{label:'Browse services',href:'/services',icon:'browse'},{label:'Requests',href:'/client/requests',icon:'requests'},{label:'Jobs',href:'/client/jobs',icon:'jobs'},{label:'Invoices',href:'/client/invoices',icon:'invoices'}],
-manager:[
-  {label:'Dashboard',href:'/manager',icon:'dashboard'},
-  {label:'Requests',href:'/manager/requests',icon:'requests'},
-  {label:'Pipeline',href:'/manager/pipeline',icon:'categories'},
-  {label:'Jobs',href:'/manager/jobs',icon:'jobs'},
-  {label:'Schedule',href:'/manager/schedule',icon:'schedule'},
-  {label:'Invoices',href:'/manager/invoices',icon:'invoices'},
-  {label:'Disputes',href:'/manager/disputes',icon:'requests'},
-  {label:'Business',href:'/manager/business',icon:'company'},
-  {label:'Team',href:'/manager/team',icon:'team'},
-  {label:'Flow AI',href:'/manager/ai',icon:'ai'},
-],
+manager:[{label:'Dashboard',href:'/manager',icon:'dashboard'},{label:'Requests',href:'/manager/requests',icon:'requests'},{label:'Quotations',href:'/manager/quotations',icon:'quotations'},{label:'Jobs',href:'/manager/jobs',icon:'jobs'},{label:'Schedule',href:'/manager/schedule',icon:'schedule'},{label:'Invoices',href:'/manager/invoices',icon:'invoices'},{label:'Team',href:'/manager/team',icon:'team'}],
   employee:[
     {label:'My Day',href:'/employee/jobs',icon:'jobs'},
   ],

@@ -5,6 +5,7 @@ import { useSession } from '../../app/session'
 import { AccountIdentity } from './AccountIdentity'
 import { ThemeToggle } from '../ThemeToggle'
 import { demoMode, liveApiMode } from '../../lib/api'
+import { FlowAIBubble } from '../FlowAIBubble'
 
 const clientLinks = [
   { label: 'Dashboard', href: '/client', icon: LayoutDashboard },
@@ -63,5 +64,6 @@ export function ClientShell() {
       <main id="main-content" tabIndex={-1} className={`sf-public-main ${authArea ? 'sf-account-main' : ''}`}><Outlet /></main>
       <footer className="sf-public-footer"><div><Brand /><p>A simpler way to get the job done.</p></div><div className="sf-footer-links"><Link to="/companies">Find a service</Link><Link to="/style-guide">Component guide</Link><span>Asia/Colombo · LKR</span></div><p className="sf-footer-note"><Building2 size={15} />Built for local service companies and the people who count on them.</p></footer>
     </>}
+    <FlowAIBubble />
   </div>
 }

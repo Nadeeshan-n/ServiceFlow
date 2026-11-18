@@ -4,12 +4,13 @@ import type { Company, Invoice, Job, PolicyAnswer, Quote, RequestInput, RequestR
 
 type BackendUser = Omit<User, 'id' | 'role'> & { id: string | number; role: string }
 type ApiProviderSummary = { id: number; name: string; description?: string | null; accepting_requests?: boolean; rating?: number | null; completed_jobs?: number | null; starting_price?: number | null }
-type ApiProviderDetail = ApiProviderSummary & { type?: string; email?: string | null; phone?: string | null; address?: string | null; areas?: unknown[]; services?: { id: number; service_id: number; service_name: string; description?: string | null; starting_price: number }[] }
+type ApiProviderDetail = ApiProviderSummary & { type?: string; email?: string | null; phone?: string| null; address?: string | null; areas?: unknown[]; services?: { id: number; service_id: number; service_name: string; description?: string | null; starting_price: number }[] }
 type ApiService = { id: number; name: string; category?: string | null }
 type ApiRequest = { id: number; client_id: number; provider_id: number; service_id: number; description: string; preferred_date: string; preferred_time?: string | null; address: string; latitude?: number | null; longitude?: number | null; status: string }
 type ApiRequestList = { items: ApiRequest[]; total: number; limit: number; offset: number }
 type ApiQuotationItem = { description: string; quantity: number | string; unit_price: number | string }
 type ApiQuotation = { id: number; request_id: number; status: string; total_amount: number | string; items: ApiQuotationItem[] }
+
 function normalizeUser(value: BackendUser): User {
   const roles: Record<string, Role> = { CLIENT: 'client', COMPANY_MANAGER: 'manager', EMPLOYEE: 'employee', SYSTEM_ADMIN: 'admin', client: 'client', manager: 'manager', employee: 'employee', admin: 'admin' }
   const role = roles[value.role]
@@ -59,6 +60,15 @@ function normalizeQuote(value: ApiQuotation, record?: RequestRecord): Quote {
   }
 }
 
+// Defensive: backend sometimes returns {items: [...]}, sometimes [...]
+function toArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[]
+  if (value && typeof value === 'object' && Array.isArray((value as any).items)) {
+    return (value as any).items as T[]
+  }
+  return []
+}
+
 async function requestReferences() {
   const [providers, services] = await Promise.all([
     api<ApiProviderSummary[]>('/providers?provider_type=COMPANY&limit=100'),
@@ -90,12 +100,14 @@ const jobs: Job[] = [
 ]
 const invoices: Invoice[] = [{ id: 'SF-INV-1003', job_id: 'SF-JOB-1003', company_name: 'BrightFix', service: 'Basic inspection', total: 3000, status: 'PAID', items: sampleItems }]
 const wait = () => new Promise(resolve => setTimeout(resolve, 250))
+
 function find<T extends { id: string }>(rows: T[], id: string): T {
   const row = rows.find(value => value.id === id)
   if (!row) throw new ApiError('This record is unavailable or you do not have access to it.', 404)
   return row
 }
 const copy = <T,>(value: T): T => structuredClone(value)
+
 function publicCompany(company: Company): Company {
   const companyRequests = requests.filter(request => request.company_id === company.id)
   return {
@@ -104,6 +116,7 @@ function publicCompany(company: Company): Company {
     completed_jobs: jobs.filter(job => job.status === 'COMPLETED' && companyRequests.some(request => request.id === job.request_id)).length,
   }
 }
+
 export const clientService = {
   async companies(): Promise<Company[]> {
     if (liveApiMode) {
@@ -168,7 +181,7 @@ export const clientService = {
   async requests(): Promise<RequestRecord[]> {
     if (liveApiMode) {
       const [records, references] = await Promise.all([api<ApiRequestList>('/requests?limit=100'), requestReferences()])
-      return records.items.map(record => requestRecord(record, references.providers, references.services))
+      return toArray<ApiRequest>(records).map(record => requestRecord(record, references.providers, references.services))
     }
     if (!demoMode) return api('/requests'); await wait(); return copy(requests.filter(row => row.client_id === demoAccount.id()))
   },
@@ -202,7 +215,11 @@ export const clientService = {
     row.status = 'CANCELLED'; if (row.quotation_id) find(quotes, row.quotation_id).status = 'CANCELLED'
   },
   async quotes(): Promise<Quote[]> {
-    if (liveApiMode || !demoMode) { const records = await clientService.requests(); const ids = [...new Set(records.flatMap(r => r.quotation_id ? [r.quotation_id] : []))]; return Promise.all(ids.map(id => clientService.quote(id))) }
+    if (liveApiMode || !demoMode) {
+      const records = await clientService.requests()
+      const ids = [...new Set(records.flatMap(r => r.quotation_id ? [r.quotation_id] : []))]
+      return Promise.all(ids.map(id => clientService.quote(id)))
+    }
     await wait(); return copy(quotes.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id())))
   },
   async quote(id: string): Promise<Quote> {
@@ -223,8 +240,18 @@ export const clientService = {
       jobs.unshift({ id: `SF-JOB-${Date.now()}`, request_id: request.id, company_name: row.company_name, service: row.service, status: 'JOB_CREATED', address: request.address })
     } else { row.status = 'DECLINED'; request.status = 'DECLINED' }
   },
-  async jobs(): Promise<Job[]> { if (!demoMode) return api('/jobs'); await wait(); return copy(jobs.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id()))) },
-  async job(id: string): Promise<Job> { if (!demoMode) return api(`/jobs/${encodeURIComponent(id)}`); await wait(); return copy(find(await clientService.jobs(), id)) },
+  async jobs(): Promise<Job[]> {
+    if (!demoMode) {
+      const res = await api<{ items: Job[] } | Job[]>('/jobs?limit=100')
+      return Array.isArray(res) ? res : ((res as { items?: Job[] }).items ?? [])
+    }
+    await wait()
+    return copy(jobs.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id())))
+  },
+  async job(id: string): Promise<Job> {
+    if (!demoMode) return api(`/jobs/${encodeURIComponent(id)}`)
+    await wait(); return copy(find(await clientService.jobs(), id))
+  },
   async decideSchedule(id: string, decision: 'approve' | 'decline') {
     if (!demoMode) return api(`/jobs/${encodeURIComponent(id)}/schedule/${decision}`, 'POST')
     await wait(); const row = find(jobs, (await clientService.job(id)).id)
@@ -238,9 +265,23 @@ export const clientService = {
     if (!['JOB_CREATED', 'SCHEDULE_PROPOSED', 'SCHEDULE_CONFIRMED'].includes(row.status)) throw new ApiError('Cancellation is only available before work starts.', 409)
     row.status = 'CANCELLED'; delete row.appointment
   },
-  async invoices(): Promise<Invoice[]> { if (!demoMode) return api('/invoices'); await wait(); const ownedJobs = await clientService.jobs(); return copy(invoices.filter(row => ownedJobs.some(job => job.id === row.job_id))) },
-  async invoice(id: string): Promise<Invoice> { if (!demoMode) return api(`/invoices/${encodeURIComponent(id)}`); await wait(); return copy(find(await clientService.invoices(), id)) },
-  async policy(companyId: string): Promise<{ title: string; url: string } | null> { if (!demoMode) return api(`/companies/${encodeURIComponent(companyId)}/policy`); await wait(); return null },
+  async invoices(): Promise<Invoice[]> {
+    if (!demoMode) {
+      const res = await api<{ items: Invoice[] } | Invoice[]>('/invoices?limit=100')
+      return Array.isArray(res) ? res : ((res as { items?: Invoice[] }).items ?? [])
+    }
+    await wait()
+    const ownedJobs = await clientService.jobs()
+    return copy(invoices.filter(row => ownedJobs.some(job => job.id === row.job_id)))
+  },
+  async invoice(id: string): Promise<Invoice> {
+    if (!demoMode) return api(`/invoices/${encodeURIComponent(id)}`)
+    await wait(); return copy(find(await clientService.invoices(), id))
+  },
+  async policy(companyId: string): Promise<{ title: string; url: string } | null> {
+    if (!demoMode) return api(`/companies/${encodeURIComponent(companyId)}/policy`)
+    await wait(); return null
+  },
   async ask(companyId: string, question: string): Promise<PolicyAnswer> {
     if (!demoMode) return api('/ai/ask-docs', 'POST', { company_id: companyId, question })
     await wait(); return { status: 'NO_POLICY', answer: 'No public policy is available for this sample company. Answers will appear when a company policy is connected.', citations: [] }
