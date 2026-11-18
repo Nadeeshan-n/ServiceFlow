@@ -6,7 +6,7 @@ from app.ai.embeddings import embed_texts
 from app.models.policy import Policy
 from app.models.policy_chunk import PolicyChunk
 
-def index_policy(policy_id: int, session: Session) -> int:
+def index_policy(policy_id: int, session: Session, pdf_bytes: bytes | None = None) -> int:
     """Replace chunks for an inactive policy.
 
     The caller owns the transaction and must commit or roll it back.
@@ -19,7 +19,7 @@ def index_policy(policy_id: int, session: Session) -> int:
 
     file_path = policy.file_path
     provider_id = policy.provider_id
-    chunks = extract_policy_chunks(file_path)
+    chunks = extract_policy_chunks(pdf_bytes if pdf_bytes is not None else file_path)
     if not chunks:
         raise ValueError("PDF contains no extractable text")
 

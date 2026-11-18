@@ -24,7 +24,7 @@ class PolicyChunk:
 
 
 def extract_policy_chunks(
-    pdf_path: str | Path,
+    pdf_path: str | Path | bytes,
     chunk_size: int = 800,
     overlap: int = 120,
 ) -> list[PolicyChunk]:
@@ -67,7 +67,12 @@ def extract_policy_chunks(
                 PolicyChunk(page_number, len(chunks), " ".join(current), title)
             )
 
-    with pymupdf.open(pdf_path) as document:
+    if isinstance(pdf_path, (bytes, bytearray)):
+        document = pymupdf.open(stream=bytes(pdf_path), filetype="pdf")
+    else:
+        document = pymupdf.open(pdf_path)
+
+    with document:
         for page_number, page in enumerate(document, start=1):
             title: str | None = None
             section_lines: list[str] = []

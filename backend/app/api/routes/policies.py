@@ -276,7 +276,7 @@ def upload_policy(
         policy_id = policy.id
 
         try:
-            chunk_count = index_policy(policy_id, session)
+            chunk_count = index_policy(policy_id, session, pdf_bytes=content)
         except ValueError as exc:
             raise HTTPException(422, "The PDF could not be indexed") from exc
 
