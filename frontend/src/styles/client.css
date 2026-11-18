@@ -64,8 +64,8 @@
 }
 
 .sf-dashboard-tabs button[aria-selected="true"] {
-  background: var(--sf-primary);
-  color: var(--sf-surface);
+  background: var(--sf-signal);
+  color: #17191C;
 }
 
 input[type="file"] {
