@@ -3,6 +3,8 @@
 .sf-brand { display:inline-flex;align-items:center;gap:10px;font:700 20px Sora,Inter,sans-serif;letter-spacing:-.7px;white-space:nowrap }
 .sf-brand-dot { color:var(--sf-signal) }
 .sf-brand-mark { display:grid;place-items:center;width:38px;height:38px;background:var(--sf-primary);color:#fff;border-radius:4px;font:600 13px 'IBM Plex Mono',monospace }
+img.sf-brand-mark { background:transparent }
+.sf-sidebar-brand img.sf-brand-mark { background:transparent }
 .sf-sidebar-brand .sf-brand-mark { background:var(--sf-signal);color:#17191C }
 .sf-demo { display:flex;align-items:center;justify-content:center;gap:12px;min-height:30px;padding:6px 16px;background:var(--sf-wash);color:var(--sf-text-2);font:11px Inter,sans-serif;letter-spacing:.1px;text-align:center;flex-wrap:wrap }
 .sf-demo strong { font-weight:600;color:var(--sf-ink) }.sf-demo-dot { width:5px;height:5px;background:var(--sf-signal);border-radius:50% }.sf-demo-divider { color:var(--sf-text-2) }
