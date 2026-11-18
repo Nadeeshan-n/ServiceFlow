@@ -16,7 +16,8 @@ const clientLinks = [
 ]
 
 export function Brand() {
-  return <Link to="/" className="sf-brand" aria-label="ServiceFlow home"><span className="sf-brand-mark" aria-hidden="true">SF</span><span>ServiceFlow<span className="sf-brand-dot">.</span></span></Link>
+  return <Link to="/" className="sf-brand" aria-label="ServiceFlow home"><img src="/sf-logo.png" alt="" className="sf-brand-mark" /><span>ServiceFlow<span className="sf-brand-dot">.</span></span></Link>
+
 }
 
 export function ClientShell() {
