@@ -9,7 +9,7 @@ import { clientService } from '../../lib/client-service'
 export function ProfileSettings() {
   const { user, requestLogout } = useSession()
   const resource = useResource(async () => {
-    if (liveApiMode) return { name: user?.name || '', email: user?.email || '', phone: user?.phone || '' }
+    if (liveApiMode) { const me = await clientService.me(); return { name: me.name, email: me.email || '', phone: me.phone || '' } }
     requireDemo('Profile settings')
     return demoAccount.profile()
   }, [user?.id])

@@ -16,6 +16,9 @@ type ApiInvoice = { id: number; job_id: number; invoice_number: string; total_am
 type ApiInvoiceList = { items: ApiInvoice[]; total: number; limit: number; offset: number }
 type ApiMessage = { id: number; request_id: number; sender_user_id: number; message_text: string; created_at: string }
 type ApiMessageList = { items: ApiMessage[]; total: number; limit: number; offset: number }
+type ApiNotification = { id: number; user_id: number; title: string; message: string; type: string; is_read: boolean; created_at: string }
+type ApiNotificationList = { items: ApiNotification[]; page: number; limit: number; total: number; total_pages: number }
+export type ClientNotification = { id: string; title: string; message: string; type: string; is_read: boolean; created_at: string }
 function normalizeUser(value: BackendUser): User {
   const roles: Record<string, Role> = { CLIENT: 'client', COMPANY_MANAGER: 'manager', EMPLOYEE: 'employee', SYSTEM_ADMIN: 'admin', client: 'client', manager: 'manager', employee: 'employee', admin: 'admin' }
   const role = roles[value.role]
@@ -203,6 +206,21 @@ export const clientService = {
     await wait()
   },
   async me(): Promise<User> { return liveApiMode || !demoMode ? normalizeUser(await api<BackendUser>('/auth/me')) : demoAccount.me() },
+  async notifications(): Promise<ClientNotification[]> {
+    if (liveApiMode || !demoMode) { const list = await api<ApiNotificationList>('/notifications?limit=100'); return list.items.map(item => ({ id: String(item.id), title: item.title, message: item.message, type: item.type, is_read: item.is_read, created_at: item.created_at })) }
+    return []
+  },
+  async unreadNotificationCount(): Promise<number> {
+    if (liveApiMode || !demoMode) { const result = await api<{ unread_count: number }>('/notifications/unread-count'); return result.unread_count }
+    return 0
+  },
+  async markNotificationRead(id: string) {
+    if (liveApiMode || !demoMode) return api(`/notifications/${encodeURIComponent(id)}/read`, 'PATCH')
+  },
+  async markAllNotificationsRead(): Promise<number> {
+    if (liveApiMode || !demoMode) { const result = await api<{ updated_count: number; message: string }>('/notifications/read-all', 'PATCH'); return result.updated_count }
+    return 0
+  },
   async requests(): Promise<RequestRecord[]> {
     if (liveApiMode) {
       const [records, references] = await Promise.all([api<ApiRequestList>('/requests?limit=100'), requestReferences()])
@@ -214,7 +232,7 @@ export const clientService = {
     if (liveApiMode) {
       const [record, references] = await Promise.all([api<ApiRequest>(`/requests/${encodeURIComponent(id)}`), requestReferences()])
       const row = requestRecord(record, references.providers, references.services)
-      const quotations = await api<ApiQuotation[]>(`/requests/${encodeURIComponent(id)}/quotations`).catch(() => [] as ApiQuotation[])
+      const quotations = await api<ApiQuotation[]>(`/requests/${encodeURIComponent(id)}/quotations`)
       const open = quotations.find(quotation => quotation.status === 'SENT') || quotations[0]
       if (open) row.quotation_id = String(open.id)
       return row
@@ -254,7 +272,7 @@ export const clientService = {
   async quotes(): Promise<Quote[]> {
     if (liveApiMode || !demoMode) {
       const records = await clientService.requests()
-      const lists = await Promise.all(records.map(record => api<ApiQuotation[]>(`/requests/${encodeURIComponent(record.id)}/quotations`).catch(() => [] as ApiQuotation[])))
+      const lists = await Promise.all(records.map(record => api<ApiQuotation[]>(`/requests/${encodeURIComponent(record.id)}/quotations`)))
       return lists.flatMap((values, index) => values.map(value => normalizeQuote(value, records[index])))
     }
     await wait(); return copy(quotes.filter(row => requests.some(request => request.id === row.request_id && request.client_id === demoAccount.id())))
