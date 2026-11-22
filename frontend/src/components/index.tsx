@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type HTM
 import {
   BadgeCheck, Ban, Banknote, BriefcaseBusiness, Building2, CalendarCheck2, CalendarDays,
   CheckCheck, ChevronDown, CircleCheck, CircleX, ClipboardList, Clock3, Download, Ellipsis,
-  Eye, FileSearch, FileText, Grid2X2, LayoutDashboard, ListFilter, MapPin, Menu, MessageCircleQuestion,
+  Eye, FileSearch, FileText, Grid2X2, House, LayoutDashboard, ListFilter, LogOut, MapPin, Menu, MessageCircleQuestion,
   Pencil, Play, Plus, Receipt, Search, Settings, ShieldCheck, Sparkles, TriangleAlert, Upload, UserRound,
   UserRoundCheck, Users, X, type LucideIcon
 } from 'lucide-react'
@@ -12,6 +12,7 @@ const iconMap = { dashboard: LayoutDashboard, browse: Search, categories: Grid2X
   quotations: FileText, jobs: BriefcaseBusiness, schedule: CalendarDays, invoices: Receipt,
   ai: Sparkles, company: Building2, team: Users, settings: Settings } satisfies Record<string, LucideIcon>
 export type NavIcon = keyof typeof iconMap
+export { Tabs } from './Tabs'
 
 export type ActionVariant = 'stamp' | 'stub' | 'void' | 'ghost' | 'icon'
 export function ActionButton({ variant = 'stub', size = 'default', icon: Icon, children, className, title, 'aria-label': ariaLabel, ...props }:
@@ -33,9 +34,9 @@ const statuses: Record<WorkflowStatus, { label: string; icon: LucideIcon; color:
   scheduled: { label:'Scheduled',icon:CalendarCheck2,color:'var(--sf-info)',bg:'var(--sf-info-bg)' },
   in_progress: { label:'In progress',icon:Play,color:'var(--sf-info)',bg:'var(--sf-info-bg)' },
   completed: { label:'Completed',icon:CheckCheck,color:'var(--sf-success)',bg:'var(--sf-success-bg)' },
-  paid: { label:'Paid',icon:BadgeCheck,color:'#fff',bg:'var(--sf-success)',solid:true },
+  paid: { label:'Paid',icon:BadgeCheck,color:'var(--sf-surface)',bg:'var(--sf-success)',solid:true },
   unpaid: { label:'Unpaid',icon:TriangleAlert,color:'var(--sf-warning)',bg:'var(--sf-warning-bg)' },
-  cancelled: { label:'Cancelled',icon:Ban,color:'#fff',bg:'var(--sf-cancelled)',solid:true }
+  cancelled: { label:'Cancelled',icon:Ban,color:'var(--sf-surface)',bg:'var(--sf-cancelled)',solid:true }
 }
 export function StatusBadge({ status, label }: { status: WorkflowStatus; label?: string }) {
   const config = statuses[status]; const Icon = config.icon
@@ -50,7 +51,7 @@ export function TextField({ label, hint, error, id, required, className, ...prop
   return <div className="flex flex-col gap-1.5">
     <label htmlFor={fieldId} className="text-[13.5px] font-medium">{label}{required && <span className="ml-1 text-red-700" aria-hidden="true">*</span>}</label>
     <input {...props} id={fieldId} required={required} aria-invalid={!!error} aria-describedby={error || hint ? messageId : undefined} className={cx('sf-input',className)}/>
-    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[#B93832]' : 'text-text-secondary')}>{error && <TriangleAlert className="mr-1 inline" size={13} aria-hidden="true"/>}{error ?? hint}</p>}
+    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[var(--sf-error)]' : 'text-text-secondary')}>{error && <TriangleAlert className="mr-1 inline" size={13} aria-hidden="true"/>}{error ?? hint}</p>}
   </div>
 }
 export function SelectField({ label, hint, error, id, required, children, className, ...props }: FieldBase & SelectHTMLAttributes<HTMLSelectElement>) {
@@ -58,14 +59,14 @@ export function SelectField({ label, hint, error, id, required, children, classN
   return <div className="flex flex-col gap-1.5">
     <label htmlFor={fieldId} className="text-[13.5px] font-medium">{label}{required && <span className="ml-1 text-red-700" aria-hidden="true">*</span>}</label>
     <select {...props} id={fieldId} required={required} aria-invalid={!!error} aria-describedby={error || hint ? messageId : undefined} className={cx('sf-input',className)}>{children}</select>
-    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[#B93832]' : 'text-text-secondary')}>{error ?? hint}</p>}
+    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[var(--sf-error)]' : 'text-text-secondary')}>{error ?? hint}</p>}
   </div>
 }
 export function TextAreaField({ label, hint, error, id, required, className, ...props }: FieldBase & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const generated = useId(), fieldId = id ?? generated, messageId = fieldId + '-message'
   return <div className="flex flex-col gap-1.5"><label htmlFor={fieldId} className="text-[13.5px] font-medium">{label}{required && <span className="ml-1 text-red-700" aria-hidden="true">*</span>}</label>
     <textarea {...props} id={fieldId} required={required} aria-invalid={!!error} aria-describedby={error || hint ? messageId : undefined} className={cx('sf-input min-h-24',className)}/>
-    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[#B93832]' : 'text-text-secondary')}>{error ?? hint}</p>}
+    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[var(--sf-error)]' : 'text-text-secondary')}>{error ?? hint}</p>}
   </div>
 }
 export const DateField = (props: Omit<React.ComponentProps<typeof TextField>,'type'>) => <TextField {...props} type="date"/>
@@ -128,7 +129,7 @@ export function ProviderCard({ initials, name, category, location, rating, start
   return <SurfaceCard className="p-5"><div className="flex items-start gap-3"><span className="sf-display flex h-12 w-12 shrink-0 items-center justify-center rounded-docket bg-graphite font-semibold text-white">{initials}</span>
     <div className="min-w-0"><div className="flex items-center gap-2"><h3 className="sf-display font-semibold">{name}</h3><span className="rounded-docket bg-graphite p-1 text-white" role="img" aria-label="Verified provider" title="Verified provider"><ShieldCheck size={15} aria-hidden="true"/></span></div>
       <p className="text-sm text-text-secondary">{category}</p></div></div>
-    <div className="mt-4 space-y-1 text-sm text-text-secondary"><p><MapPin size={15} className="mr-2 inline" aria-hidden="true"/>{location}</p><p><span className="text-[#6E5600]" aria-hidden="true">★</span> <span className="sf-tabular">{rating}</span> · {jobs} jobs</p></div>
+    <div className="mt-4 space-y-1 text-sm text-text-secondary"><p><MapPin size={15} className="mr-2 inline" aria-hidden="true"/>{location}</p><p><span className="text-signal-text" aria-hidden="true">★</span> <span className="sf-tabular">{rating}</span> · {jobs} jobs</p></div>
     <div className="sf-separator mt-4 flex items-center justify-between gap-3 pt-4"><span className="sf-tabular text-sm">From {startingPrice}</span><ActionButton variant="stamp" size="small" onClick={onView}>View profile</ActionButton></div>
   </SurfaceCard>
 }
@@ -136,12 +137,21 @@ export function ProviderCard({ initials, name, category, location, rating, start
 export type NavItem = {label:string;href:string;icon:NavIcon;count?:number}
 export const roleNav: Record<'client'|'manager'|'employee'|'admin',NavItem[]> = {
   client:[{label:'Dashboard',href:'/client',icon:'dashboard'},{label:'Browse services',href:'/services',icon:'browse'},{label:'Requests',href:'/client/requests',icon:'requests'},{label:'Jobs',href:'/client/jobs',icon:'jobs'},{label:'Invoices',href:'/client/invoices',icon:'invoices'}],
-  manager:[{label:'Dashboard',href:'/manager',icon:'dashboard'},{label:'Requests',href:'/manager/requests',icon:'requests'},{label:'Quotations',href:'/manager/quotations',icon:'quotations'},{label:'Jobs',href:'/manager/jobs',icon:'jobs'},{label:'Schedule',href:'/manager/schedule',icon:'schedule'},{label:'Invoices',href:'/manager/invoices',icon:'invoices'},{label:'Flow AI',href:'/manager/ai',icon:'ai'},{label:'Team',href:'/manager/team',icon:'team'}],
-  employee:[{label:'Dashboard',href:'/employee',icon:'dashboard'},{label:'Jobs',href:'/employee/jobs',icon:'jobs'},{label:'Schedule',href:'/employee/schedule',icon:'schedule'}],
-  admin:[{label:'Dashboard',href:'/admin',icon:'dashboard'},{label:'Company',href:'/admin/companies',icon:'company'},{label:'Settings',href:'/admin/settings',icon:'settings'}]
+manager:[{label:'Dashboard',href:'/manager',icon:'dashboard'},{label:'Requests',href:'/manager/requests',icon:'requests'},{label:'Quotations',href:'/manager/quotations',icon:'quotations'},{label:'Jobs',href:'/manager/jobs',icon:'jobs'},{label:'Schedule',href:'/manager/schedule',icon:'schedule'},{label:'Invoices',href:'/manager/invoices',icon:'invoices'},{label:'Team',href:'/manager/team',icon:'team'}],
+  employee:[
+    {label:'My Day',href:'/employee/jobs',icon:'jobs'},
+  ],
+  admin:[
+    {label:'Dashboard',href:'/admin',icon:'dashboard'},
+    {label:'Verification',href:'/admin/companies',icon:'company'},
+    {label:'Catalog',href:'/admin/catalog',icon:'categories'},
+    {label:'Requests & Jobs',href:'/admin/requests',icon:'jobs'},
+    {label:'Disputes',href:'/admin/disputes',icon:'requests'},
+    {label:'Settings',href:'/admin/settings',icon:'settings'},
+  ]
 }
-export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate }: {
-  items:NavItem[];activeHref:string;userName:string;subtitle:string;onNavigate?:(href:string)=>void
+export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate, onLogout }: {
+  items:NavItem[];activeHref:string;userName:string;subtitle:string;onNavigate?:(href:string)=>void;onLogout?:()=>void
 }) {
   const [open,setOpen] = useState(false)
   return <aside className="sf-dark bg-graphite text-white md:w-[248px] md:shrink-0">
@@ -154,6 +164,16 @@ export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate }
           <Icon size={19} strokeWidth={2} aria-hidden="true"/>{item.label}{item.count != null && <span className={cx('sf-mono ml-auto rounded-full px-2 text-[11px]',active?'bg-ink text-signal':'bg-[#B93832] text-white')}>{item.count}</span>}
         </a>})}
       <div className="mt-6 flex items-center gap-3 border-t border-dashed border-white/20 px-2 pt-4"><div className="sf-mono grid h-9 w-9 place-items-center rounded-full bg-graphite-2 text-xs text-signal">{userName.split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><strong className="block text-sm">{userName}</strong><span className="text-xs text-[#A8ADB3]">{subtitle}</span></div></div>
+      <div className="mt-4 space-y-1 border-t border-dashed border-white/20 pt-3">
+        <a href="/" onClick={e=>{if(onNavigate){e.preventDefault();onNavigate('/')}setOpen(false)}}
+          className="flex min-h-10 items-center gap-3 rounded-docket px-3 text-sm font-medium text-[#C9CDD2] no-underline hover:bg-graphite-2 hover:text-white">
+          <House size={19} strokeWidth={2} aria-hidden="true"/>Home
+        </a>
+        <button type="button" onClick={()=>{onLogout?.();setOpen(false)}}
+          className="flex min-h-10 w-full items-center gap-3 rounded-docket px-3 text-left text-sm font-medium text-[#C9CDD2] hover:bg-graphite-2 hover:text-white">
+          <LogOut size={19} strokeWidth={2} aria-hidden="true"/>Log out
+        </button>
+      </div>
     </nav>
   </aside>
 }
@@ -167,38 +187,74 @@ export function ResponsiveTable<T extends {id:string}>({ columns, rows, caption,
 }
 export function Modal({ open, title, description, children, onClose }: {open:boolean;title:string;description?:string;children:ReactNode;onClose:()=>void}) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(()=>{ if (!open) return
     const previous=document.activeElement instanceof HTMLElement ? document.activeElement : null
     const focusable=()=>Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? [])
     focusable()[0]?.focus()
-    const handler=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose()
+    const handler=(event:KeyboardEvent)=>{if(event.key==='Escape')closeRef.current()
       if(event.key==='Tab'){const controls=focusable();if(!controls.length)return
         const first=controls[0],last=controls[controls.length-1]
         if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus()}
         else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus()}
       }}
     document.addEventListener('keydown',handler);return()=>{document.removeEventListener('keydown',handler);previous?.focus()}
-  },[open,onClose])
+  },[open])
   const headingId = useId()
   if(!open)return null
   return <div className="fixed inset-0 z-50 grid place-items-center bg-[#22262B]/45 p-4" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
-    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={headingId} className="sf-card w-full max-w-lg p-6">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={headingId} className="sf-card max-h-[90dvh] w-full max-w-2xl overflow-y-auto p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4"><h2 id={headingId} className="sf-display text-xl font-semibold">{title}</h2><ActionButton variant="icon" icon={X} aria-label="Close dialog" onClick={onClose}/></div>
       {description&&<p className="mt-2 text-sm text-text-secondary">{description}</p>}<div className="mt-5">{children}</div>
     </div>
   </div>
 }
 export function EmptyState({ title, description, children }: {title:string;description:string;children?:ReactNode}) {
-  return <div className="rounded-docket border-2 border-dashed border-border bg-white px-6 py-10 text-center"><ClipboardList className="mx-auto mb-3 text-graphite" size={32} aria-hidden="true"/><h3 className="sf-mono text-xs font-semibold">{title}</h3><p className="mt-2 text-sm text-text-secondary">{description}</p>{children&&<div className="mt-5">{children}</div>}</div>
+  return <div className="rounded-docket border-2 border-dashed border-border bg-white px-6 py-10 text-center"><ClipboardList className="mx-auto mb-3 text-foreground" size={32} aria-hidden="true"/><h3 className="sf-mono text-xs font-semibold">{title}</h3><p className="mt-2 text-sm text-text-secondary">{description}</p>{children&&<div className="mt-5">{children}</div>}</div>
 }
 export function Skeleton({ rows=3 }: {rows?:number}) {
   return <div role="status" aria-label="Loading" className="sf-card space-y-3 p-5"><span className="sr-only">Loading</span>{Array.from({length:rows},(_,i)=><div key={i} aria-hidden="true" className="sf-skeleton h-4 rounded-docket" style={{width:i%2?'70%':'95%'}}/>)}</div>
 }
-export function FlowAIPanel({ question, answer, source, page, loading=false }: {question:string;answer?:string;source?:string;page?:number;loading?:boolean}) {
-  return <SurfaceCard className="max-w-xl p-5"><h3 className="sf-display flex items-center gap-2 font-bold"><Sparkles className="text-[#6E5600]" size={18} aria-hidden="true"/>Flow AI</h3>
-    <div className="mt-4 flex gap-2 rounded-docket border border-line bg-paper p-3 text-sm"><MessageCircleQuestion className="shrink-0" size={17} aria-hidden="true"/>{question}</div>
-    {loading?<div className="mt-4"><Skeleton rows={2}/></div>:<><div className="mt-4 flex gap-2 text-sm"><Sparkles className="shrink-0 text-[#6E5600]" size={17} aria-hidden="true"/><p>{answer ?? 'The uploaded policy document does not provide enough evidence to answer this question.'}</p></div>
-    {answer && source && page != null && <div className="sf-mono mt-4 inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary"><FileSearch size={15} aria-hidden="true"/>Source: {source} · Page {page}</div>}</>}
+export function FlowAIPanel({ question, answer, source, page, citations, loading=false }: {
+  question:string;
+  answer?:string;
+  source?:string;
+  page?:number;
+  citations?: Array<{ source: string; page: number }>;
+  loading?:boolean;
+}) {
+  return <SurfaceCard className="max-w-xl p-5">
+    <h3 className="sf-display flex items-center gap-2 font-bold">
+      <Sparkles className="text-signal-text" size={18} aria-hidden="true"/>Flow AI
+    </h3>
+    <div className="mt-4 flex gap-2 rounded-docket border border-line bg-paper p-3 text-sm">
+      <MessageCircleQuestion className="shrink-0" size={17} aria-hidden="true"/>{question}
+    </div>
+    {loading ? (
+      <div className="mt-4"><Skeleton rows={2}/></div>
+    ) : (
+      <>
+        <div className="mt-4 flex gap-2 text-sm">
+          <Sparkles className="shrink-0 text-signal-text" size={17} aria-hidden="true"/>
+          <p>{answer ?? 'The uploaded policy document does not provide enough evidence to answer this question.'}</p>
+        </div>
+        {citations && citations.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {citations.map((c, i) => (
+              <div key={i} className="sf-mono inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary">
+                <FileSearch size={15} aria-hidden="true"/>Source: {c.source} · Page {c.page}
+              </div>
+            ))}
+          </div>
+        )}
+        {(!citations || citations.length === 0) && answer && source && page != null && (
+          <div className="sf-mono mt-4 inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary">
+            <FileSearch size={15} aria-hidden="true"/>Source: {source} · Page {page}
+          </div>
+        )}
+      </>
+    )}
   </SurfaceCard>
 }
 export const icons = { Plus,Pencil,Eye,ListFilter,Download,Upload,Ellipsis,Banknote,CalendarDays,Clock3,MapPin,ChevronDown }
