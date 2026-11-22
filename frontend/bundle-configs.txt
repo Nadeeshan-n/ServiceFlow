@@ -1,0 +1,104 @@
+﻿
+
+=== .env.example ===
+
+VITE_API_BASE_URL=http://localhost:8000
+# Demo runs without a backend. Set false only when the API contracts are implemented.
+VITE_DEMO_MODE=true
+# Connect only the real routes already implemented by the shared API.
+# The remaining client workflow continues to use sample records.
+VITE_USE_LIVE_API=false
+
+#Test pupose for bypassing auth, set to true to bypass auth and use a default user.
+VITE_DEV_BYPASS_AUTH=true
+
+
+
+=== index.html ===
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/serviceflow-logo.png" />
+    <title>ServiceFlow</title>
+    <script>try{var t=localStorage.getItem('sf-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','light')}</script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+
+=== package.json ===
+
+{
+  "name": "serviceflow-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^3.6.0",
+    "@react-google-maps/api": "^2.20.6",
+    "@tanstack/react-query": "^5.51.0",
+    "axios": "^1.7.0",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.414.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.52.0",
+    "react-router-dom": "^6.26.0",
+    "recharts": "^2.12.0",
+    "zod": "^3.23.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.31",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0"
+  }
+}
+
+
+
+=== tsconfig.json ===
+
+{
+  "compilerOptions": {
+    "target": "ES2021", "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx",
+    "strict": true, "skipLibCheck": true, "esModuleInterop": true,
+    "resolveJsonModule": true, "isolatedModules": true, "noEmit": true
+  },
+  "include": ["src"]
+}
+
+
+
+=== vite.config.ts ===
+
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173,
+    strictPort: true,
+    host: 'localhost',
+  },
+})

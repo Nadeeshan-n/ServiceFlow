@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ChangeEvent } from 'react'
-import { Sparkles, X, Send, Paperclip, FileText, Check, Lock, MessageCircle } from 'lucide-react'
+import { Sparkles, X, Send, Paperclip, FileText, Check, Lock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../app/session'
 import { api, apiUpload, ApiError } from '../lib/api'
@@ -56,7 +56,9 @@ export function FlowAIBubble() {
   const { user } = useSession()
   const navigate = useNavigate()
   const isProvider = user?.role === 'manager'
-    if (user?.role === 'admin') return null
+
+  if (user?.role === 'admin') return null
+
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'data' | 'policy'>('data')
   const [messages, setMessages] = useState<Message[]>([])
@@ -77,7 +79,6 @@ export function FlowAIBubble() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
-  // Welcome message when chat opens first time
   useEffect(() => {
     if (open && user && isProvider && messages.length === 0) {
       setMessages([{
@@ -150,7 +151,6 @@ export function FlowAIBubble() {
     setShowSuggestions(false)
     setMessages(m => [...m, { role: 'user', content: question }])
 
-    // Greeting detection — no API call
     if (isGreeting(question)) {
       setMessages(m => [...m, {
         role: 'assistant',
@@ -164,7 +164,6 @@ export function FlowAIBubble() {
       return
     }
 
-    // Thanks detection
     if (isThanks(question)) {
       setMessages(m => [...m, {
         role: 'assistant',
@@ -173,7 +172,6 @@ export function FlowAIBubble() {
       return
     }
 
-    // Actual API call
     setLoading(true)
     try {
       const endpoint = mode === 'policy' ? '/ai/ask-docs' : '/ai/ask-data'
@@ -280,8 +278,7 @@ export function FlowAIBubble() {
     <>
       <button
         onClick={handleBubbleClick}
-        className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 h-14 w-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform text-white"
-        style={{ backgroundColor: '#6E5600' }}
+        className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 h-14 w-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform bg-signal text-ink"
         aria-label={open ? 'Close Flow AI' : 'Open Flow AI'}
         title={user ? (isProvider ? 'Flow AI' : 'Flow AI (provider only)') : 'Sign in to use Flow AI'}
       >
@@ -289,70 +286,57 @@ export function FlowAIBubble() {
       </button>
 
       {open && (
-        <div
-          className="fixed z-40 bottom-36 md:bottom-24 right-4 left-4 md:left-auto md:right-6 md:w-96 rounded-2xl shadow-2xl flex flex-col h-[32rem] max-h-[calc(100vh-10rem)]"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E5E5E5',
-            color: '#1A1A1A',
-          }}
-        >
-          {/* Header */}
-          <div className="p-3" style={{ borderBottom: '1px solid #E5E5E5', backgroundColor: '#FAFAFA' }}>
+        <div className="fixed z-40 bottom-36 md:bottom-24 right-4 left-4 md:left-auto md:right-6 md:w-96 rounded-2xl shadow-2xl flex flex-col h-[32rem] max-h-[calc(100vh-10rem)] bg-paper border border-line text-graphite">
+          <div className="p-3 border-b border-line">
             <div className="flex items-center gap-2 mb-1">
-              <Sparkles size={18} style={{ color: '#6E5600' }} />
-              <h3 className="font-bold text-sm" style={{ color: '#1A1A1A' }}>Flow AI</h3>
+              <Sparkles className="text-signal" size={18} />
+              <h3 className="font-bold text-sm text-graphite">Flow AI</h3>
               {policyUploaded && (
-                <span
-                  className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded flex items-center gap-1"
-                  style={{ color: '#166534', backgroundColor: '#DCFCE7' }}
-                >
+                <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 bg-[#DCFCE7] text-[#166534]">
                   <Check size={11} /> Policy loaded
                 </span>
               )}
             </div>
             {user && (
-              <p className="text-[11px] mb-2" style={{ color: '#666666' }}>
-                Signed in as <strong style={{ color: '#1A1A1A' }}>{user.name}</strong> ({user.role})
+              <p className="text-[11px] mb-2 text-text-secondary">
+                Signed in as <strong className="text-graphite">{user.name}</strong> ({user.role})
               </p>
             )}
             <div className="flex gap-1">
               <button
                 onClick={() => setMode('data')}
-                className="text-xs px-2 py-1 rounded font-medium"
-                style={{
-                  backgroundColor: mode === 'data' ? '#6E5600' : '#EFEFEF',
-                  color: mode === 'data' ? '#FFFFFF' : '#666666',
-                }}
+                className={`text-xs px-2 py-1 rounded font-medium ${
+                  mode === 'data'
+                    ? 'bg-signal text-ink'
+                    : 'bg-paper text-text-secondary border border-line'
+                }`}
               >
                 Business
               </button>
               <button
                 onClick={() => setMode('policy')}
-                className="text-xs px-2 py-1 rounded font-medium"
-                style={{
-                  backgroundColor: mode === 'policy' ? '#6E5600' : '#EFEFEF',
-                  color: mode === 'policy' ? '#FFFFFF' : '#666666',
-                }}
+                className={`text-xs px-2 py-1 rounded font-medium ${
+                  mode === 'policy'
+                    ? 'bg-signal text-ink'
+                    : 'bg-paper text-text-secondary border border-line'
+                }`}
               >
                 Policy
               </button>
             </div>
           </div>
 
-          {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3" style={{ backgroundColor: '#FFFFFF' }}>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
             {!user && (
               <div className="text-center py-12 px-4">
-                <Lock className="mx-auto mb-3" size={32} style={{ color: '#6E5600' }} />
-                <h4 className="font-semibold mb-2" style={{ color: '#1A1A1A' }}>Sign in required</h4>
-                <p className="text-xs mb-4" style={{ color: '#666666' }}>
+                <Lock className="mx-auto mb-3 text-signal" size={32} />
+                <h4 className="font-semibold mb-2 text-graphite">Sign in required</h4>
+                <p className="text-xs mb-4 text-text-secondary">
                   Flow AI is available only to signed-in users. Please sign in to continue.
                 </p>
                 <button
                   onClick={handleSignIn}
-                  className="inline-block px-5 py-2 rounded-lg text-sm font-semibold text-white"
-                  style={{ backgroundColor: '#6E5600' }}
+                  className="inline-block px-5 py-2 rounded-lg text-sm font-semibold bg-signal text-ink"
                 >
                   Sign in
                 </button>
@@ -361,12 +345,12 @@ export function FlowAIBubble() {
 
             {user && !isProvider && messages.length === 0 && (
               <div className="text-center py-12 px-4">
-                <Lock className="mx-auto mb-3" size={32} style={{ color: '#6E5600' }} />
-                <h4 className="font-semibold mb-2" style={{ color: '#1A1A1A' }}>Provider-only feature</h4>
-                <p className="text-xs mb-2" style={{ color: '#666666' }}>
+                <Lock className="mx-auto mb-3 text-signal" size={32} />
+                <h4 className="font-semibold mb-2 text-graphite">Provider-only feature</h4>
+                <p className="text-xs mb-2 text-text-secondary">
                   Flow AI is available to provider accounts only.
                 </p>
-                <p className="text-xs" style={{ color: '#666666' }}>
+                <p className="text-xs text-text-secondary">
                   For policy questions, visit the company profile page.
                 </p>
               </div>
@@ -375,7 +359,7 @@ export function FlowAIBubble() {
             {messages.map((m, i) => {
               if (m.role === 'system') {
                 return (
-                  <div key={i} className="text-xs text-center py-1 italic" style={{ color: '#888888' }}>
+                  <div key={i} className="text-xs text-center py-1 italic text-text-secondary">
                     {m.content}
                   </div>
                 )
@@ -384,26 +368,19 @@ export function FlowAIBubble() {
               return (
                 <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className="max-w-[85%] p-2.5 rounded-lg text-sm"
-                    style={{
-                      backgroundColor: isUser
-                        ? '#6E5600'
+                    className={`max-w-[85%] p-2.5 rounded-lg text-sm ${
+                      isUser
+                        ? 'bg-graphite text-white'
                         : m.error
-                          ? '#FEF2F2'
-                          : '#F5F5F5',
-                      color: isUser
-                        ? '#FFFFFF'
-                        : m.error
-                          ? '#991B1B'
-                          : '#1A1A1A',
-                      border: m.error ? '1px solid #FECACA' : 'none',
-                    }}
+                          ? 'border border-red-500 bg-red-500/10 text-red-600'
+                          : 'bg-paper border border-line text-graphite'
+                    }`}
                   >
                     <p className="whitespace-pre-wrap">{m.content}</p>
                     {m.citations && m.citations.length > 0 && (
-                      <div className="mt-2 space-y-1 pt-2" style={{ borderTop: `1px solid ${isUser ? 'rgba(255,255,255,0.2)' : '#D4D4D4'}` }}>
+                      <div className={`mt-2 space-y-1 pt-2 ${isUser ? 'border-t border-white/20' : 'border-t border-line'}`}>
                         {m.citations.map((c, j) => (
-                          <p key={j} className="text-[11px]" style={{ opacity: 0.85 }}>
+                          <p key={j} className="text-[11px] opacity-85">
                             📄 {c.source} · p.{c.page}
                           </p>
                         ))}
@@ -415,12 +392,7 @@ export function FlowAIBubble() {
                           <button
                             key={j}
                             onClick={() => handleQuickAction(qa.action)}
-                            className="text-left text-xs px-3 py-2 rounded-lg font-medium transition"
-                            style={{
-                              backgroundColor: '#FFFFFF',
-                              border: '1px solid #6E5600',
-                              color: '#6E5600',
-                            }}
+                            className="text-left text-xs px-3 py-2 rounded-lg font-medium border border-signal text-signal bg-paper hover:bg-signal hover:text-ink transition"
                           >
                             → {qa.label}
                           </button>
@@ -434,7 +406,7 @@ export function FlowAIBubble() {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="p-2.5 rounded-lg text-sm" style={{ backgroundColor: '#F5F5F5', color: '#666666' }}>
+                <div className="p-2.5 rounded-lg text-sm bg-paper border border-line text-text-secondary">
                   Thinking…
                 </div>
               </div>
@@ -442,14 +414,13 @@ export function FlowAIBubble() {
 
             {showSuggestions && isProvider && (
               <div className="pt-2">
-                <p className="text-[11px] mb-2 font-semibold" style={{ color: '#666666' }}>Try asking:</p>
+                <p className="text-[11px] mb-2 font-semibold text-text-secondary">Try asking:</p>
                 <div className="flex flex-col gap-1.5">
                   {COMMON_QUESTIONS.map(q => (
                     <button
                       key={q}
                       onClick={() => send(q)}
-                      className="text-left text-xs px-3 py-2 rounded-lg transition"
-                      style={{ backgroundColor: '#F5F5F5', border: '1px solid #E5E5E5', color: '#1A1A1A' }}
+                      className="text-left text-xs px-3 py-2 rounded-lg bg-paper border border-line text-graphite hover:bg-signal hover:text-ink transition"
                       disabled={loading}
                     >
                       {q}
@@ -460,28 +431,25 @@ export function FlowAIBubble() {
             )}
           </div>
 
-          {/* Upload dialog */}
           {showUploadDialog && pendingFile && (
-            <div className="p-3 space-y-2" style={{ borderTop: '1px solid #E5E5E5', backgroundColor: '#FAFAFA' }}>
-              <p className="text-xs font-semibold" style={{ color: '#1A1A1A' }}>Upload policy: {pendingFile.name}</p>
+            <div className="p-3 space-y-2 border-t border-line bg-paper">
+              <p className="text-xs font-semibold text-graphite">Upload policy: {pendingFile.name}</p>
               <div>
-                <label className="block text-[11px] mb-1" style={{ color: '#666666' }}>Title</label>
+                <label className="block text-[11px] mb-1 text-text-secondary">Title</label>
                 <input
                   value={policyTitle}
                   onChange={e => setPolicyTitle(e.target.value)}
-                  className="w-full px-2 py-1.5 rounded text-sm focus:outline-none"
-                  style={{ border: '1px solid #D4D4D4', backgroundColor: '#FFFFFF', color: '#1A1A1A' }}
+                  className="w-full px-2 py-1.5 rounded text-sm focus:outline-none sf-input"
                   maxLength={255}
                   required
                 />
               </div>
               <div>
-                <label className="block text-[11px] mb-1" style={{ color: '#666666' }}>Policy type</label>
+                <label className="block text-[11px] mb-1 text-text-secondary">Policy type</label>
                 <select
                   value={policyType}
                   onChange={e => setPolicyType(e.target.value as PolicyType)}
-                  className="w-full px-2 py-1.5 rounded text-sm focus:outline-none"
-                  style={{ border: '1px solid #D4D4D4', backgroundColor: '#FFFFFF', color: '#1A1A1A' }}
+                  className="w-full px-2 py-1.5 rounded text-sm focus:outline-none sf-input"
                 >
                   {POLICY_TYPES.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -489,12 +457,11 @@ export function FlowAIBubble() {
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] mb-1" style={{ color: '#666666' }}>Visibility</label>
+                <label className="block text-[11px] mb-1 text-text-secondary">Visibility</label>
                 <select
                   value={visibility}
                   onChange={e => setVisibility(e.target.value as 'PUBLIC' | 'PRIVATE')}
-                  className="w-full px-2 py-1.5 rounded text-sm focus:outline-none"
-                  style={{ border: '1px solid #D4D4D4', backgroundColor: '#FFFFFF', color: '#1A1A1A' }}
+                  className="w-full px-2 py-1.5 rounded text-sm focus:outline-none sf-input"
                 >
                   <option value="PRIVATE">Private (only you)</option>
                   <option value="PUBLIC">Public (visible to clients)</option>
@@ -503,16 +470,14 @@ export function FlowAIBubble() {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={cancelUpload}
-                  className="flex-1 px-3 py-1.5 rounded text-sm"
-                  style={{ border: '1px solid #D4D4D4', backgroundColor: '#FFFFFF', color: '#1A1A1A' }}
+                  className="flex-1 px-3 py-1.5 rounded text-sm border border-line bg-paper text-graphite"
                   disabled={uploading}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmUpload}
-                  className="flex-1 px-3 py-1.5 rounded text-sm font-semibold text-white"
-                  style={{ backgroundColor: '#6E5600', opacity: (uploading || !policyTitle.trim()) ? 0.5 : 1 }}
+                  className="flex-1 px-3 py-1.5 rounded text-sm font-semibold bg-signal text-ink disabled:opacity-40"
                   disabled={uploading || !policyTitle.trim()}
                 >
                   {uploading ? 'Uploading…' : 'Upload'}
@@ -521,23 +486,21 @@ export function FlowAIBubble() {
             </div>
           )}
 
-          {/* Input */}
           {!user ? (
-            <div className="p-3 text-center" style={{ borderTop: '1px solid #E5E5E5' }}>
+            <div className="p-3 border-t border-line text-center">
               <button
                 onClick={handleSignIn}
-                className="w-full px-4 py-2 rounded-lg text-sm font-semibold text-white"
-                style={{ backgroundColor: '#6E5600' }}
+                className="w-full px-4 py-2 rounded-lg text-sm font-semibold bg-signal text-ink"
               >
                 Sign in to chat
               </button>
             </div>
           ) : !isProvider ? (
-            <div className="p-3 text-center text-xs" style={{ borderTop: '1px solid #E5E5E5', color: '#666666' }}>
+            <div className="p-3 border-t border-line text-center text-xs text-text-secondary">
               Flow AI is provider-only
             </div>
           ) : (
-            <div className="p-2 flex gap-2 items-center" style={{ borderTop: '1px solid #E5E5E5' }}>
+            <div className="p-2 border-t border-line flex gap-2 items-center">
               <input
                 ref={fileRef}
                 type="file"
@@ -548,8 +511,7 @@ export function FlowAIBubble() {
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading || loading}
-                className="p-2 rounded-lg disabled:opacity-40"
-                style={{ color: '#6E5600' }}
+                className="p-2 rounded-lg disabled:opacity-40 text-signal hover:bg-line/20"
                 aria-label="Upload PDF"
                 title="Upload policy PDF"
               >
@@ -565,15 +527,13 @@ export function FlowAIBubble() {
                   }
                 }}
                 placeholder={mode === 'policy' ? 'Ask about policy…' : 'Ask about business…'}
-                className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
-                style={{ border: '1px solid #D4D4D4', backgroundColor: '#FFFFFF', color: '#1A1A1A' }}
+                className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none sf-input"
                 disabled={loading || uploading}
               />
               <button
                 onClick={() => send()}
                 disabled={loading || uploading || !input.trim()}
-                className="px-3 py-2 rounded-lg text-white flex items-center justify-center disabled:opacity-40"
-                style={{ backgroundColor: '#6E5600' }}
+                className="px-3 py-2 rounded-lg flex items-center justify-center disabled:opacity-40 bg-signal text-ink"
                 aria-label="Send"
               >
                 <Send size={16} />

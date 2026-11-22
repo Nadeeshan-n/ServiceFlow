@@ -6,6 +6,7 @@ import { AccountIdentity } from './AccountIdentity'
 import { ThemeToggle } from '../ThemeToggle'
 import { demoMode, liveApiMode } from '../../lib/api'
 import { FlowAIBubble } from '../FlowAIBubble'
+import { Footer } from './Footer'
 
 const clientLinks = [
   { label: 'Dashboard', href: '/client', icon: LayoutDashboard },
@@ -57,7 +58,7 @@ export function ClientShell() {
         <button type="button" onClick={logout} className="sf-small-button" aria-label="Log out">
           <LogOut size={16} aria-hidden="true" /><span>Log out</span>
         </button>
-      </nav><button className="sf-mobile-menu" type="button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} aria-controls="mobile-client-navigation" onClick={() => setMenuOpen(value => !value)}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button></header>{menuOpen && <div id="mobile-client-navigation" className="sf-mobile-drawer"><Brand />{navigation}<button type="button" onClick={logout} className="sf-mobile-signout"><LogOut size={18} />Log out</button></div>}<main id="main-content" tabIndex={-1} className="sf-client-main"><Outlet /></main><div className="sf-workspace-footnote">ServiceFlow · Clear steps. Better service.<span>Asia/Colombo · LKR</span></div></div>
+      </nav><button className="sf-mobile-menu" type="button" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen} aria-controls="mobile-client-navigation" onClick={() => setMenuOpen(value => !value)}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button></header>{menuOpen && <div id="mobile-client-navigation" className="sf-mobile-drawer"><Brand />{navigation}<button type="button" onClick={logout} className="sf-mobile-signout"><LogOut size={18} />Log out</button></div>}<main id="main-content" tabIndex={-1} className="sf-client-main"><Outlet /></main><Footer /></div>
       <nav className="sf-bottom-nav" aria-label="Quick navigation">{clientLinks.filter(link => !['Requests', 'Profile / Settings'].includes(link.label)).map(({ href, label, icon: Icon }) => <NavLink key={href} to={href === '/client' ? href : `/client?tab=${href.split('/').pop()}`} className={(href === '/client' ? !location.search.includes('tab=') : location.search.includes(`tab=${href.split('/').pop()}`)) ? 'is-active' : ''}><Icon size={20} /><span>{label === 'Dashboard' ? 'Overview' : label}</span></NavLink>)}</nav>
     </> : <>
       <header className="sf-public-header"><div className="sf-public-header-inner"><Brand /><nav aria-label="Main navigation"><ThemeToggle /><NavLink className="sf-public-nav-link" to="/companies">Find a service</NavLink>{!authArea && <Link className="sf-public-nav-link sf-how-link" to="/#how-it-works">How it works</Link>}{user ? <><AccountIdentity /><button type="button" onClick={logout} className="sf-small-button">Log out</button></> : <><Link className="sf-public-nav-link" to="/login">Sign in</Link><Link className="sf-small-button sf-small-button-dark" to="/register">Create account<ArrowUpRight size={15} /></Link></>}</nav></div></header>

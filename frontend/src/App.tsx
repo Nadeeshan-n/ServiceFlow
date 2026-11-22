@@ -8,6 +8,8 @@ import AdminAllRequestsJobs from "./features/admin/AllRequestsJobs";
 import { NotificationBell } from "./components/NotificationBell";
 import { FlowAIBubble } from "./components/FlowAIBubble";
 import PolicyPage from "./features/manager/PolicyPage";
+import { Footer } from "./components/layout/Footer";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 import {
   BrowserRouter, Routes, Route, Link, Navigate, useParams,
@@ -70,24 +72,22 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className="flex min-h-screen bg-paper">
       <AppSidebar
         items={items}
         activeHref={activeHref}
-        userName={user?.name ?? "Amizka"}
+        userName={user?.name ?? "User"}
         subtitle={subtitleMap[role]}
         onNavigate={(href) => navigate(href)}
       />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{
-          display: "flex", alignItems: "center", justifyContent: "flex-end",
-          gap: 12, padding: "10px 24px",
-          borderBottom: "1px solid #e8e8e8", background: "white",
-        }}>
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="flex items-center justify-end gap-3 border-b border-line bg-paper px-6 py-2.5">
           <NotificationBell />
-          <span style={{ fontSize: 13, color: "#666" }}>{user?.name}</span>
+          <span className="text-sm text-text-secondary">{user?.name}</span>
+          <ThemeToggle />
         </header>
-        <main style={{ flex: 1, padding: 24 }}>{children}</main>
+        <main className="flex-1 p-6 bg-paper text-graphite">{children}</main>
+        <Footer />
       </div>
       <FlowAIBubble />
     </div>
