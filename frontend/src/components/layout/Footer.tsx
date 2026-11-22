@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
-import { Mail, MapPin, Phone, Sparkles } from 'lucide-react'
+import { Mail, MapPin, Phone } from 'lucide-react'
 import { ThemeToggle } from '../ThemeToggle'
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-line bg-paper text-graphite">
+    <footer className="mt-auto border-t border-line bg-paper text-foreground">
       <div className="mx-auto max-w-7xl px-6 py-8">
         <div className="grid gap-8 md:grid-cols-4">
           <div>
@@ -20,20 +20,20 @@ export function Footer() {
           <div>
             <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide">Quick Links</h4>
             <ul className="space-y-2 text-xs text-text-secondary">
-              <li><Link to="/companies" className="hover:text-graphite transition">Find a service</Link></li>
-              <li><Link to="/client" className="hover:text-graphite transition">My Dashboard</Link></li>
-              <li><Link to="/client/requests" className="hover:text-graphite transition">My Requests</Link></li>
-              <li><Link to="/client/invoices" className="hover:text-graphite transition">My Invoices</Link></li>
+              <li><Link to="/companies" className="hover:text-foreground transition">Find a service</Link></li>
+              <li><Link to="/client" className="hover:text-foreground transition">My Dashboard</Link></li>
+              <li><Link to="/client/requests" className="hover:text-foreground transition">My Requests</Link></li>
+              <li><Link to="/client/invoices" className="hover:text-foreground transition">My Invoices</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide">For Providers</h4>
             <ul className="space-y-2 text-xs text-text-secondary">
-              <li><Link to="/register" className="hover:text-graphite transition">Become a Provider</Link></li>
-              <li><Link to="/login" className="hover:text-graphite transition">Provider Sign In</Link></li>
-              <li><Link to="/style-guide" className="hover:text-graphite transition">Component Guide</Link></li>
-              <li><Link to="/#how-it-works" className="hover:text-graphite transition">How it works</Link></li>
+              <li><Link to="/register" className="hover:text-foreground transition">Become a Provider</Link></li>
+              <li><Link to="/login" className="hover:text-foreground transition">Provider Sign In</Link></li>
+              <li><Link to="/style-guide" className="hover:text-foreground transition">Component Guide</Link></li>
+              <li><Link to="/#how-it-works" className="hover:text-foreground transition">How it works</Link></li>
             </ul>
           </div>
 
@@ -52,8 +52,6 @@ export function Footer() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-3 text-xs text-text-secondary">
           <p>© {new Date().getFullYear()} ServiceFlow. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1"><Sparkles size={12} /> v0.1.0</span>
-            <span>Asia/Colombo · LKR</span>
             <ThemeToggle />
           </div>
         </div>

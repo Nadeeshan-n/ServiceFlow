@@ -92,4 +92,4 @@ const statusLabels: Record<string, string> = {
 export const statusLabel = (status: string) => statusLabels[status] || status.toLowerCase().replaceAll('_', ' ')
 export function RecordStatus({ status }: { status: string }) { return <StatusBadge status={statusMap[status] || 'awaiting'} label={statusLabel(status)} /> }
 export function EmptyRecords({ title }: { title: string }) { return <EmptyState title={title} description="Your records will appear here as your service request progresses."><Link className="sf-link" to="/companies">Browse companies →</Link></EmptyState> }
-export function Notice({ children, error = false }: { children: ReactNode; error?: boolean }) { return <p role={error ? 'alert' : 'status'} className={`rounded-docket border p-3 text-sm ${error ? 'border-red-300 bg-red-50 text-red-800' : 'border-border bg-paper'}`}>{children}</p> }
+export function Notice({ children, error = false }: { children: ReactNode; error?: boolean }) { return <p role={error ? 'alert' : 'status'} className={`rounded-docket border p-3 text-sm ${error ? 'border-[var(--sf-error)] bg-[var(--sf-error-bg)] text-[var(--sf-error)]' : 'border-border bg-paper'}`}>{children}</p> }

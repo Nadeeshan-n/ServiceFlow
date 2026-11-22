@@ -81,14 +81,16 @@ export function NotificationBell() {
       aria-expanded={open}
       style={{
         position: 'relative', width: 40, height: 40, borderRadius: 8,
-        border: '1px solid #d8d8d8', background: 'white', cursor: 'pointer',
+        border: '1px solid var(--sf-border)', background: 'var(--sf-surface)',
+        color: 'var(--sf-ink)', cursor: 'pointer',
         display: 'grid', placeItems: 'center',
       }}
     >
       <Bell size={18} />
       {unread > 0 && <span style={{
         position: 'absolute', top: -6, right: -6, minWidth: 18, height: 18,
-        padding: '0 5px', borderRadius: 999, background: '#B93832', color: 'white',
+        padding: '0 5px', borderRadius: 999, border: '1px solid var(--sf-error)',
+        background: 'var(--sf-error-bg)', color: 'var(--sf-error)',
         fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center',
       }}>{unread > 99 ? '99+' : unread}</span>}
     </button>
@@ -98,13 +100,14 @@ export function NotificationBell() {
       aria-label="Notifications"
       style={{
         position: 'absolute', right: 0, top: 48, width: 360, maxWidth: '90vw',
-        background: 'white', border: '1px solid #d8d8d8', borderRadius: 10,
-        boxShadow: '0 12px 32px rgba(0,0,0,0.12)', zIndex: 60, overflow: 'hidden',
+        background: 'var(--sf-surface)', color: 'var(--sf-ink)',
+        border: '1px solid var(--sf-border)', borderRadius: 10,
+        boxShadow: '0 12px 32px var(--sf-shadow)', zIndex: 60, overflow: 'hidden',
       }}
     >
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', borderBottom: '1px solid #eaeaea',
+        padding: '10px 14px', borderBottom: '1px solid var(--sf-line)',
       }}>
         <strong style={{ fontSize: 14 }}>Notifications</strong>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -113,8 +116,9 @@ export function NotificationBell() {
             onClick={() => setUnreadOnly(v => !v)}
             style={{
               fontSize: 12, padding: '4px 8px', borderRadius: 6,
-              border: '1px solid #d8d8d8', background: unreadOnly ? '#22262B' : 'white',
-              color: unreadOnly ? 'white' : '#22262B', cursor: 'pointer',
+              border: '1px solid var(--sf-border)',
+              background: unreadOnly ? 'var(--sf-primary)' : 'var(--sf-surface)',
+              color: unreadOnly ? '#FFFFFF' : 'var(--sf-ink)', cursor: 'pointer',
             }}
           >{unreadOnly ? 'Unread only' : 'All'}</button>
           <button
@@ -123,7 +127,8 @@ export function NotificationBell() {
             disabled={unread === 0}
             style={{
               fontSize: 12, padding: '4px 8px', borderRadius: 6,
-              border: '1px solid #d8d8d8', background: 'white',
+              border: '1px solid var(--sf-border)', background: 'var(--sf-surface)',
+              color: 'var(--sf-ink)',
               cursor: unread === 0 ? 'not-allowed' : 'pointer',
               opacity: unread === 0 ? 0.5 : 1,
             }}
@@ -133,9 +138,9 @@ export function NotificationBell() {
 
       <div style={{ maxHeight: 400, overflowY: 'auto' }}>
         {error && <div style={{ padding: 12 }}><Notice error>{error}</Notice></div>}
-        {loading && <p style={{ padding: 14, fontSize: 13, color: '#666' }}>Loading…</p>}
+        {loading && <p style={{ padding: 14, fontSize: 13, color: 'var(--sf-text-2)' }}>Loading…</p>}
         {!loading && !error && items.length === 0 && (
-          <p style={{ padding: 14, fontSize: 13, color: '#666' }}>
+          <p style={{ padding: 14, fontSize: 13, color: 'var(--sf-text-2)' }}>
             {unreadOnly ? 'No unread notifications.' : 'No notifications yet.'}
           </p>
         )}
@@ -146,21 +151,22 @@ export function NotificationBell() {
             onClick={() => { if (!n.is_read) void markRead(n.id) }}
             style={{
               display: 'block', width: '100%', textAlign: 'left',
-              padding: '10px 14px', borderBottom: '1px solid #f0f0f0',
-              background: n.is_read ? 'white' : '#f7f9fb',
-              cursor: n.is_read ? 'default' : 'pointer', border: 0,
-              fontFamily: 'inherit',
+              padding: '10px 14px', border: 0,
+              borderBottom: '1px solid var(--sf-line)',
+              background: n.is_read ? 'var(--sf-surface)' : 'var(--sf-info-bg)',
+              color: 'var(--sf-ink)',
+              cursor: n.is_read ? 'default' : 'pointer', fontFamily: 'inherit',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <strong style={{ fontSize: 13 }}>{n.title}</strong>
               {!n.is_read && <span style={{
                 width: 8, height: 8, borderRadius: '50%',
-                background: '#3b82f6', marginTop: 5, flexShrink: 0,
+                background: 'var(--sf-info)', marginTop: 5, flexShrink: 0,
               }} />}
             </div>
-            <p style={{ fontSize: 13, color: '#444', margin: '4px 0 2px' }}>{n.message}</p>
-            <p style={{ fontSize: 11, color: '#888', margin: 0 }}>
+            <p style={{ fontSize: 13, color: 'var(--sf-text-2)', margin: '4px 0 2px' }}>{n.message}</p>
+            <p style={{ fontSize: 11, color: 'var(--sf-text-2)', margin: 0 }}>
               {n.type} · {dateTime(n.created_at)}
             </p>
           </button>

@@ -146,7 +146,7 @@ export default function Invoices() {
                   render: (i) => {
                     const bal = Number((i as any).total_amount || 0) - Number((i as any).paid_amount || 0)
                     return (
-                      <span className={`sf-tabular font-semibold ${bal > 0 ? 'text-[#B93832]' : ''}`}>
+                      <span className={`sf-tabular font-semibold ${bal > 0 ? 'text-[var(--sf-error)]' : ''}`}>
                         {money(bal)}
                       </span>
                     )

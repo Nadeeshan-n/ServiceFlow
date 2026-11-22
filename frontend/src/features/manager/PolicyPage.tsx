@@ -98,7 +98,7 @@ function PolicyUploadSection() {
         </div>
       )}
       {uploadError && (
-        <div className="rounded-docket border border-[#B93832] bg-[#FDF2F2] p-3 text-sm text-[#B93832]">{uploadError}</div>
+        <div className="rounded-docket border border-[var(--sf-error)] bg-[var(--sf-error-bg)] p-3 text-sm text-[var(--sf-error)]">{uploadError}</div>
       )}
       <label className="inline-flex items-center gap-2 rounded-docket border border-line px-4 py-2 text-sm font-semibold cursor-pointer hover:bg-paper">
         <Upload size={17} aria-hidden="true" />

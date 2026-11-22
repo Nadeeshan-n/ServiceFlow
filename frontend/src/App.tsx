@@ -37,6 +37,7 @@ import { SharedExamples } from "./features/client/SharedExamples";
 import ManagerDashboard from "./features/manager/Dashboard";
 import RequestInbox from "./features/manager/Requests";
 import QuoteBuilder from "./features/manager/QuoteBuilder";
+import ManagerQuotations from "./features/manager/Quotations";
 import ManagerJobs from "./features/manager/Jobs";
 import ManagerSchedule from "./features/manager/Schedule";
 import Invoices from "./features/manager/Invoices";
@@ -51,7 +52,7 @@ import ManagerDisputes from "./features/manager/Disputes";
 type Role = "manager" | "employee" | "admin";
 
 function Shell({ role, children }: { role: Role; children: ReactNode }) {
-  const { user } = useSession();
+  const { user, requestLogout } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const items = roleNav[role];
@@ -79,6 +80,7 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
         userName={user?.name ?? "User"}
         subtitle={subtitleMap[role]}
         onNavigate={(href) => navigate(href)}
+        onLogout={requestLogout}
       />
       <div className="flex flex-1 flex-col min-w-0">
         <header className="flex items-center justify-end gap-3 border-b border-line bg-paper px-6 py-2.5">
@@ -86,7 +88,7 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
           <span className="text-sm text-text-secondary">{user?.name}</span>
           <ThemeToggle />
         </header>
-        <main className="flex-1 p-6 bg-paper text-graphite">{children}</main>
+        <main className="flex-1 p-6 bg-paper text-foreground">{children}</main>
         <Footer />
       </div>
       <FlowAIBubble />
@@ -136,6 +138,7 @@ export default function App() {
 
         <Route path="/manager" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDashboard /></Shell></RoleGuard>} />
         <Route path="/manager/requests" element={<RoleGuard role="manager"><Shell role="manager"><RequestInbox /></Shell></RoleGuard>} />
+        <Route path="/manager/quotations" element={<RoleGuard role="manager"><Shell role="manager"><ManagerQuotations /></Shell></RoleGuard>} />
         <Route path="/manager/pipeline" element={<RoleGuard role="manager"><Shell role="manager"><Pipeline /></Shell></RoleGuard>} />
         <Route path="/manager/quotations/:requestId" element={<RoleGuard role="manager"><Shell role="manager"><QuoteBuilder /></Shell></RoleGuard>} />
         <Route path="/manager/jobs" element={<RoleGuard role="manager"><Shell role="manager"><ManagerJobs /></Shell></RoleGuard>} />

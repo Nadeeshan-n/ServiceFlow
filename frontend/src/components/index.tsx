@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type HTM
 import {
   BadgeCheck, Ban, Banknote, BriefcaseBusiness, Building2, CalendarCheck2, CalendarDays,
   CheckCheck, ChevronDown, CircleCheck, CircleX, ClipboardList, Clock3, Download, Ellipsis,
-  Eye, FileSearch, FileText, Grid2X2, LayoutDashboard, ListFilter, MapPin, Menu, MessageCircleQuestion,
+  Eye, FileSearch, FileText, Grid2X2, House, LayoutDashboard, ListFilter, LogOut, MapPin, Menu, MessageCircleQuestion,
   Pencil, Play, Plus, Receipt, Search, Settings, ShieldCheck, Sparkles, TriangleAlert, Upload, UserRound,
   UserRoundCheck, Users, X, type LucideIcon
 } from 'lucide-react'
@@ -51,7 +51,7 @@ export function TextField({ label, hint, error, id, required, className, ...prop
   return <div className="flex flex-col gap-1.5">
     <label htmlFor={fieldId} className="text-[13.5px] font-medium">{label}{required && <span className="ml-1 text-red-700" aria-hidden="true">*</span>}</label>
     <input {...props} id={fieldId} required={required} aria-invalid={!!error} aria-describedby={error || hint ? messageId : undefined} className={cx('sf-input',className)}/>
-    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[#B93832]' : 'text-text-secondary')}>{error && <TriangleAlert className="mr-1 inline" size={13} aria-hidden="true"/>}{error ?? hint}</p>}
+    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[var(--sf-error)]' : 'text-text-secondary')}>{error && <TriangleAlert className="mr-1 inline" size={13} aria-hidden="true"/>}{error ?? hint}</p>}
   </div>
 }
 export function SelectField({ label, hint, error, id, required, children, className, ...props }: FieldBase & SelectHTMLAttributes<HTMLSelectElement>) {
@@ -59,14 +59,14 @@ export function SelectField({ label, hint, error, id, required, children, classN
   return <div className="flex flex-col gap-1.5">
     <label htmlFor={fieldId} className="text-[13.5px] font-medium">{label}{required && <span className="ml-1 text-red-700" aria-hidden="true">*</span>}</label>
     <select {...props} id={fieldId} required={required} aria-invalid={!!error} aria-describedby={error || hint ? messageId : undefined} className={cx('sf-input',className)}>{children}</select>
-    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[#B93832]' : 'text-text-secondary')}>{error ?? hint}</p>}
+    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[var(--sf-error)]' : 'text-text-secondary')}>{error ?? hint}</p>}
   </div>
 }
 export function TextAreaField({ label, hint, error, id, required, className, ...props }: FieldBase & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const generated = useId(), fieldId = id ?? generated, messageId = fieldId + '-message'
   return <div className="flex flex-col gap-1.5"><label htmlFor={fieldId} className="text-[13.5px] font-medium">{label}{required && <span className="ml-1 text-red-700" aria-hidden="true">*</span>}</label>
     <textarea {...props} id={fieldId} required={required} aria-invalid={!!error} aria-describedby={error || hint ? messageId : undefined} className={cx('sf-input min-h-24',className)}/>
-    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[#B93832]' : 'text-text-secondary')}>{error ?? hint}</p>}
+    {(error || hint) && <p id={messageId} className={cx('text-[13px]',error ? 'text-[var(--sf-error)]' : 'text-text-secondary')}>{error ?? hint}</p>}
   </div>
 }
 export const DateField = (props: Omit<React.ComponentProps<typeof TextField>,'type'>) => <TextField {...props} type="date"/>
@@ -129,7 +129,7 @@ export function ProviderCard({ initials, name, category, location, rating, start
   return <SurfaceCard className="p-5"><div className="flex items-start gap-3"><span className="sf-display flex h-12 w-12 shrink-0 items-center justify-center rounded-docket bg-graphite font-semibold text-white">{initials}</span>
     <div className="min-w-0"><div className="flex items-center gap-2"><h3 className="sf-display font-semibold">{name}</h3><span className="rounded-docket bg-graphite p-1 text-white" role="img" aria-label="Verified provider" title="Verified provider"><ShieldCheck size={15} aria-hidden="true"/></span></div>
       <p className="text-sm text-text-secondary">{category}</p></div></div>
-    <div className="mt-4 space-y-1 text-sm text-text-secondary"><p><MapPin size={15} className="mr-2 inline" aria-hidden="true"/>{location}</p><p><span className="text-[#6E5600]" aria-hidden="true">★</span> <span className="sf-tabular">{rating}</span> · {jobs} jobs</p></div>
+    <div className="mt-4 space-y-1 text-sm text-text-secondary"><p><MapPin size={15} className="mr-2 inline" aria-hidden="true"/>{location}</p><p><span className="text-signal-text" aria-hidden="true">★</span> <span className="sf-tabular">{rating}</span> · {jobs} jobs</p></div>
     <div className="sf-separator mt-4 flex items-center justify-between gap-3 pt-4"><span className="sf-tabular text-sm">From {startingPrice}</span><ActionButton variant="stamp" size="small" onClick={onView}>View profile</ActionButton></div>
   </SurfaceCard>
 }
@@ -150,8 +150,8 @@ manager:[{label:'Dashboard',href:'/manager',icon:'dashboard'},{label:'Requests',
     {label:'Settings',href:'/admin/settings',icon:'settings'},
   ]
 }
-export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate }: {
-  items:NavItem[];activeHref:string;userName:string;subtitle:string;onNavigate?:(href:string)=>void
+export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate, onLogout }: {
+  items:NavItem[];activeHref:string;userName:string;subtitle:string;onNavigate?:(href:string)=>void;onLogout?:()=>void
 }) {
   const [open,setOpen] = useState(false)
   return <aside className="sf-dark bg-graphite text-white md:w-[248px] md:shrink-0">
@@ -164,6 +164,16 @@ export function AppSidebar({ items, activeHref, userName, subtitle, onNavigate }
           <Icon size={19} strokeWidth={2} aria-hidden="true"/>{item.label}{item.count != null && <span className={cx('sf-mono ml-auto rounded-full px-2 text-[11px]',active?'bg-ink text-signal':'bg-[#B93832] text-white')}>{item.count}</span>}
         </a>})}
       <div className="mt-6 flex items-center gap-3 border-t border-dashed border-white/20 px-2 pt-4"><div className="sf-mono grid h-9 w-9 place-items-center rounded-full bg-graphite-2 text-xs text-signal">{userName.split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><strong className="block text-sm">{userName}</strong><span className="text-xs text-[#A8ADB3]">{subtitle}</span></div></div>
+      <div className="mt-4 space-y-1 border-t border-dashed border-white/20 pt-3">
+        <a href="/" onClick={e=>{if(onNavigate){e.preventDefault();onNavigate('/')}setOpen(false)}}
+          className="flex min-h-10 items-center gap-3 rounded-docket px-3 text-sm font-medium text-[#C9CDD2] no-underline hover:bg-graphite-2 hover:text-white">
+          <House size={19} strokeWidth={2} aria-hidden="true"/>Home
+        </a>
+        <button type="button" onClick={()=>{onLogout?.();setOpen(false)}}
+          className="flex min-h-10 w-full items-center gap-3 rounded-docket px-3 text-left text-sm font-medium text-[#C9CDD2] hover:bg-graphite-2 hover:text-white">
+          <LogOut size={19} strokeWidth={2} aria-hidden="true"/>Log out
+        </button>
+      </div>
     </nav>
   </aside>
 }
@@ -201,7 +211,7 @@ export function Modal({ open, title, description, children, onClose }: {open:boo
   </div>
 }
 export function EmptyState({ title, description, children }: {title:string;description:string;children?:ReactNode}) {
-  return <div className="rounded-docket border-2 border-dashed border-border bg-white px-6 py-10 text-center"><ClipboardList className="mx-auto mb-3 text-graphite" size={32} aria-hidden="true"/><h3 className="sf-mono text-xs font-semibold">{title}</h3><p className="mt-2 text-sm text-text-secondary">{description}</p>{children&&<div className="mt-5">{children}</div>}</div>
+  return <div className="rounded-docket border-2 border-dashed border-border bg-white px-6 py-10 text-center"><ClipboardList className="mx-auto mb-3 text-foreground" size={32} aria-hidden="true"/><h3 className="sf-mono text-xs font-semibold">{title}</h3><p className="mt-2 text-sm text-text-secondary">{description}</p>{children&&<div className="mt-5">{children}</div>}</div>
 }
 export function Skeleton({ rows=3 }: {rows?:number}) {
   return <div role="status" aria-label="Loading" className="sf-card space-y-3 p-5"><span className="sr-only">Loading</span>{Array.from({length:rows},(_,i)=><div key={i} aria-hidden="true" className="sf-skeleton h-4 rounded-docket" style={{width:i%2?'70%':'95%'}}/>)}</div>
@@ -216,7 +226,7 @@ export function FlowAIPanel({ question, answer, source, page, citations, loading
 }) {
   return <SurfaceCard className="max-w-xl p-5">
     <h3 className="sf-display flex items-center gap-2 font-bold">
-      <Sparkles className="text-[#6E5600]" size={18} aria-hidden="true"/>Flow AI
+      <Sparkles className="text-signal-text" size={18} aria-hidden="true"/>Flow AI
     </h3>
     <div className="mt-4 flex gap-2 rounded-docket border border-line bg-paper p-3 text-sm">
       <MessageCircleQuestion className="shrink-0" size={17} aria-hidden="true"/>{question}
@@ -226,7 +236,7 @@ export function FlowAIPanel({ question, answer, source, page, citations, loading
     ) : (
       <>
         <div className="mt-4 flex gap-2 text-sm">
-          <Sparkles className="shrink-0 text-[#6E5600]" size={17} aria-hidden="true"/>
+          <Sparkles className="shrink-0 text-signal-text" size={17} aria-hidden="true"/>
           <p>{answer ?? 'The uploaded policy document does not provide enough evidence to answer this question.'}</p>
         </div>
         {citations && citations.length > 0 && (

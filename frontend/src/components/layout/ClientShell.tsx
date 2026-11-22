@@ -63,7 +63,7 @@ export function ClientShell() {
     </> : <>
       <header className="sf-public-header"><div className="sf-public-header-inner"><Brand /><nav aria-label="Main navigation"><ThemeToggle /><NavLink className="sf-public-nav-link" to="/companies">Find a service</NavLink>{!authArea && <Link className="sf-public-nav-link sf-how-link" to="/#how-it-works">How it works</Link>}{user ? <><AccountIdentity /><button type="button" onClick={logout} className="sf-small-button">Log out</button></> : <><Link className="sf-public-nav-link" to="/login">Sign in</Link><Link className="sf-small-button sf-small-button-dark" to="/register">Create account<ArrowUpRight size={15} /></Link></>}</nav></div></header>
       <main id="main-content" tabIndex={-1} className={`sf-public-main ${authArea ? 'sf-account-main' : ''}`}><Outlet /></main>
-      <footer className="sf-public-footer"><div><Brand /><p>A simpler way to get the job done.</p></div><div className="sf-footer-links"><Link to="/companies">Find a service</Link><Link to="/style-guide">Component guide</Link><span>Asia/Colombo · LKR</span></div><p className="sf-footer-note"><Building2 size={15} />Built for local service companies and the people who count on them.</p></footer>
+      <footer className="sf-public-footer"><div><Brand /><p>A simpler way to get the job done.</p></div><div className="sf-footer-links"><Link to="/companies">Find a service</Link><Link to="/style-guide">Component guide</Link></div><p className="sf-footer-note"><Building2 size={15} />Built for local service companies and the people who count on them.</p></footer>
     </>}
     <FlowAIBubble />
   </div>

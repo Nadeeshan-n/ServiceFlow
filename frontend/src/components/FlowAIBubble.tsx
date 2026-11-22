@@ -286,20 +286,20 @@ export function FlowAIBubble() {
       </button>
 
       {open && (
-        <div className="fixed z-40 bottom-36 md:bottom-24 right-4 left-4 md:left-auto md:right-6 md:w-96 rounded-2xl shadow-2xl flex flex-col h-[32rem] max-h-[calc(100vh-10rem)] bg-paper border border-line text-graphite">
+        <div className="fixed z-40 bottom-36 md:bottom-24 right-4 left-4 md:left-auto md:right-6 md:w-96 rounded-2xl shadow-2xl flex flex-col h-[32rem] max-h-[calc(100vh-10rem)] bg-paper border border-line text-foreground">
           <div className="p-3 border-b border-line">
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="text-signal" size={18} />
-              <h3 className="font-bold text-sm text-graphite">Flow AI</h3>
+              <h3 className="font-bold text-sm text-foreground">Flow AI</h3>
               {policyUploaded && (
-                <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 bg-[#DCFCE7] text-[#166534]">
+                <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 bg-[var(--sf-success-bg)] text-[var(--sf-success)]">
                   <Check size={11} /> Policy loaded
                 </span>
               )}
             </div>
             {user && (
               <p className="text-[11px] mb-2 text-text-secondary">
-                Signed in as <strong className="text-graphite">{user.name}</strong> ({user.role})
+                Signed in as <strong className="text-foreground">{user.name}</strong> ({user.role})
               </p>
             )}
             <div className="flex gap-1">
@@ -330,7 +330,7 @@ export function FlowAIBubble() {
             {!user && (
               <div className="text-center py-12 px-4">
                 <Lock className="mx-auto mb-3 text-signal" size={32} />
-                <h4 className="font-semibold mb-2 text-graphite">Sign in required</h4>
+                <h4 className="font-semibold mb-2 text-foreground">Sign in required</h4>
                 <p className="text-xs mb-4 text-text-secondary">
                   Flow AI is available only to signed-in users. Please sign in to continue.
                 </p>
@@ -346,7 +346,7 @@ export function FlowAIBubble() {
             {user && !isProvider && messages.length === 0 && (
               <div className="text-center py-12 px-4">
                 <Lock className="mx-auto mb-3 text-signal" size={32} />
-                <h4 className="font-semibold mb-2 text-graphite">Provider-only feature</h4>
+                <h4 className="font-semibold mb-2 text-foreground">Provider-only feature</h4>
                 <p className="text-xs mb-2 text-text-secondary">
                   Flow AI is available to provider accounts only.
                 </p>
@@ -372,8 +372,8 @@ export function FlowAIBubble() {
                       isUser
                         ? 'bg-graphite text-white'
                         : m.error
-                          ? 'border border-red-500 bg-red-500/10 text-red-600'
-                          : 'bg-paper border border-line text-graphite'
+                          ? 'border border-[var(--sf-error)] bg-[var(--sf-error-bg)] text-[var(--sf-error)]'
+                          : 'bg-paper border border-line text-foreground'
                     }`}
                   >
                     <p className="whitespace-pre-wrap">{m.content}</p>
@@ -420,7 +420,7 @@ export function FlowAIBubble() {
                     <button
                       key={q}
                       onClick={() => send(q)}
-                      className="text-left text-xs px-3 py-2 rounded-lg bg-paper border border-line text-graphite hover:bg-signal hover:text-ink transition"
+                      className="text-left text-xs px-3 py-2 rounded-lg bg-paper border border-line text-foreground hover:bg-signal hover:text-ink transition"
                       disabled={loading}
                     >
                       {q}
@@ -433,7 +433,7 @@ export function FlowAIBubble() {
 
           {showUploadDialog && pendingFile && (
             <div className="p-3 space-y-2 border-t border-line bg-paper">
-              <p className="text-xs font-semibold text-graphite">Upload policy: {pendingFile.name}</p>
+              <p className="text-xs font-semibold text-foreground">Upload policy: {pendingFile.name}</p>
               <div>
                 <label className="block text-[11px] mb-1 text-text-secondary">Title</label>
                 <input
@@ -470,7 +470,7 @@ export function FlowAIBubble() {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={cancelUpload}
-                  className="flex-1 px-3 py-1.5 rounded text-sm border border-line bg-paper text-graphite"
+                  className="flex-1 px-3 py-1.5 rounded text-sm border border-line bg-paper text-foreground"
                   disabled={uploading}
                 >
                   Cancel
