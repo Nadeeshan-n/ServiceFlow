@@ -21,15 +21,15 @@ export function ReviewForm({ jobId }: { jobId: string }) {
   }
   return <SurfaceCard className="max-w-3xl space-y-5 p-6">
     <h2 className="sf-display text-xl font-semibold">Review your completed service</h2>
-    {!demoMode ? <Notice>Reviews are awaiting a backend API.</Notice> : <Resource {...resource} retry={resource.reload}>
+    <Resource {...resource} retry={resource.reload}>
       {resource.data ? <Notice>Your sample review was saved. {resource.data.rating} / 5 — {resource.data.comment}</Notice> : <form className="space-y-5" onSubmit={submit}>
-        <Notice>Sample reviews appear on the company profile during this demo session.</Notice>
+        {demoMode && <Notice>Sample reviews appear on the company profile during this demo session.</Notice>}
         <SelectField label="Rating" value={rating} onChange={event => setRating(event.target.value)}>{[5, 4, 3, 2, 1].map(value => <option key={value} value={value}>{value} out of 5</option>)}</SelectField>
         <TextAreaField label="Your review" required minLength={10} maxLength={1000} value={comment} onChange={event => setComment(event.target.value)} />
         {error && <Notice error>{error}</Notice>}
         <ActionButton variant="stamp" type="submit" disabled={pending || comment.trim().length < 10}>{pending ? 'Saving…' : 'Submit review'}</ActionButton>
       </form>}
-    </Resource>}
+    </Resource>
   </SurfaceCard>
 }
 
@@ -51,9 +51,9 @@ export function DisputeForm({ kind, recordId }: { kind: 'request' | 'job'; recor
     <details>
       <summary className="cursor-pointer font-semibold">Report an issue with this {kind}</summary>
       <div className="mt-5 space-y-5">
-        {!demoMode ? <Notice>Disputes are awaiting a backend API.</Notice> : <Resource {...resource} retry={resource.reload}>
-          {resource.data?.length ? resource.data.map(dispute => <Notice key={dispute.id}>Sample dispute open · {dispute.reason}</Notice>) : <form className="space-y-5" onSubmit={submit}>
-            <Notice>This sample submission does not notify the company or an administrator.</Notice>
+        {kind === 'request' && !demoMode ? <Notice>Disputes can only be opened on a completed job.</Notice> : <Resource {...resource} retry={resource.reload}>
+          {resource.data?.length ? resource.data.map(dispute => <Notice key={dispute.id}>{demoMode ? 'Sample dispute open' : `Dispute ${dispute.status.toLowerCase().replaceAll('_', ' ')}`} · {dispute.reason}</Notice>) : <form className="space-y-5" onSubmit={submit}>
+            {demoMode && <Notice>This sample submission does not notify the company or an administrator.</Notice>}
             <TextAreaField label="Describe the issue" required minLength={10} maxLength={2000} value={reason} onChange={event => setReason(event.target.value)} />
             {error && <Notice error>{error}</Notice>}
             <ActionButton variant="stamp" type="submit" disabled={pending || reason.trim().length < 10}>{pending ? 'Submitting…' : 'Submit dispute'}</ActionButton>

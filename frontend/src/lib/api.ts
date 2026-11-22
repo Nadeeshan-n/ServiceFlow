@@ -55,7 +55,6 @@ export async function api<T>(
   }
   return data as T
 }
-
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
   let response: Response
   try {
@@ -73,6 +72,42 @@ export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
     const message = data?.message
       || (typeof data?.detail === 'string' ? data.detail : undefined)
       || 'Upload failed.'
+    throw new ApiError(message, response.status)
+  }
+  return data as T
+}
+
+export async function downloadFile(path: string, filename: string) {
+  let response: Response
+  try {
+    response = await fetch(baseUrl + path, {
+      headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      signal: AbortSignal.timeout(20000)
+    })
+  } catch { throw new ApiError('Cannot reach ServiceFlow. Check your connection and try again.', 0) }
+  if (!response.ok) throw new ApiError('This file could not be downloaded.', response.status)
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+export async function uploadFile<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  let response: Response
+  try {
+    response = await fetch(baseUrl + path, {
+      method: 'POST', headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      body: form, signal: AbortSignal.timeout(20000)
+    })
+  } catch { throw new ApiError('Cannot reach ServiceFlow. Check your connection and try again.', 0) }
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    const message = data?.message || (typeof data?.detail === 'string' ? data.detail : undefined)
+      || (response.status === 422 ? 'Please check the highlighted fields.' : 'This action could not be completed. Refresh and try again.')
     throw new ApiError(message, response.status)
   }
   return data as T

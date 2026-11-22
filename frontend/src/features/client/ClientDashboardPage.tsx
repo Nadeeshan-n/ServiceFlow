@@ -6,6 +6,7 @@ import { clientService } from '../../lib/client-service'
 import { DashboardPage } from './DashboardPage'
 import { InvoiceDetailPage, JobDetailPage, QuoteDetailPage, RecordsPage, RequestDetailPage } from './pages'
 import { ProfileSettings } from './ProfileSettings'
+import { NotificationsPage } from './NotificationsPage'
 import { NewRequestPage } from '../marketplace/RequestForm'
 import { ClientFlowAI } from '../marketplace/ClientFlowAI'
 
@@ -15,6 +16,7 @@ const tabs = [
   { key: 'quotations', label: 'Quotations' },
   { key: 'jobs', label: 'Jobs' },
   { key: 'invoices', label: 'Invoices' },
+  { key: 'notifications', label: 'Notifications' },
   { key: 'profile', label: 'Profile / Settings' },
 ] as const
 type Tab = typeof tabs[number]['key']
@@ -57,6 +59,7 @@ export function ClientDashboardPage() {
       {tab === 'quotations' && (record ? <QuoteDetailPage key={record} recordId={record} /> : <RecordsPage kind="quotations" />)}
       {tab === 'jobs' && (record ? <JobDetailPage key={record} recordId={record} /> : <RecordsPage kind="jobs" />)}
       {tab === 'invoices' && (record ? <InvoiceDetailPage key={record} recordId={record} /> : <RecordsPage kind="invoices" />)}
+      {tab === 'notifications' && <NotificationsPage />}
     </section>
     </Tabs>
     <details className="sf-card mt-8 p-5">

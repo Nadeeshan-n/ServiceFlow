@@ -9,7 +9,7 @@ import { clientService } from '../../lib/client-service'
 export function ProfileSettings() {
   const { user, requestLogout } = useSession()
   const resource = useResource(async () => {
-    if (liveApiMode) return { name: user?.name || '', email: user?.email || '', phone: user?.phone || '' }
+    if (liveApiMode) { const me = await clientService.me(); return { name: me.name, email: me.email || '', phone: me.phone || '' } }
     requireDemo('Profile settings')
     return demoAccount.profile()
   }, [user?.id])
@@ -27,7 +27,7 @@ export function ProfileSettings() {
 }
 
 function ProfileForm({ initial }: { initial: { name: string; email: string; phone: string } }) {
-  const { signIn } = useSession()
+  const { signIn, user } = useSession()
   const [name, setName] = useState(initial.name)
   const [phone, setPhone] = useState(initial.phone)
   const [currentPassword, setCurrentPassword] = useState('')
@@ -69,6 +69,7 @@ function ProfileForm({ initial }: { initial: { name: string; email: string; phon
     <SurfaceCard className="p-6">
       <form className="space-y-5" onSubmit={event => void submit(event, false)}>
         <h2 className="sf-display text-xl font-semibold">Contact details</h2>
+        {liveApiMode && user?.email_verified !== undefined && <p className="text-sm text-text-secondary">Email {user.email_verified ? 'verified' : 'not verified'}{user.company_status ? ` · Company ${user.company_status.toLowerCase()}` : ''}</p>}
         <TextField label="Full name" required maxLength={100} disabled={liveApiMode} value={name} onChange={event => setName(event.target.value)} />
         <TextField label="Email address" disabled value={initial.email} hint="Email changes require a new verification flow." />
         <TextField label="Phone number" type="tel" required minLength={7} maxLength={30} disabled={liveApiMode} value={phone} onChange={event => setPhone(event.target.value)} />

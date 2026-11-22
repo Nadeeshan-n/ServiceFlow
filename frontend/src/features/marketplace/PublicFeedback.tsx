@@ -10,7 +10,7 @@ export function PublicFeedback({ companyId }: { companyId: string }) {
   return <SurfaceCard className="space-y-4 p-6">
     <h2 className="sf-display text-xl font-semibold">Client reviews</h2>
     <Resource {...resource} retry={resource.reload}>
-      {!demoMode ? <Notice>Ratings, reviews and completed-job totals await the public company API.</Notice> : <>
+      {!demoMode ? <Notice>Individual reviews are not published. The company’s overall rating is shown under Company details.</Notice> : <>
         <p className="text-sm text-text-secondary">{rating ? `${rating} / 5 from ${reviews.length} sample review(s)` : 'No sample reviews yet.'} Verified public job totals will come from the backend.</p>
         {reviews.map(review => <article key={review.id} className="space-y-2 border-t border-line pt-4">
           <p className="font-semibold">{review.author} · {review.rating} / 5</p>
