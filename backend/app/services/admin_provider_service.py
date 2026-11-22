@@ -126,11 +126,10 @@ def approve_provider(db: Session, provider_id: int):
     provider.verification_status = "APPROVED"
 
     for user in users:
-        user.status = (
-            "ACTIVE"
-            if user.email_verified_at is not None
-            else "PENDING"
-        )
+        # Admin approval is the activation gate for provider owner
+        # accounts: approving the provider activates them outright,
+        # without waiting for email verification.
+        user.status = "ACTIVE"
 
     try:
         with best_effort_notification(db, NotificationType.PROVIDER_APPROVED):
