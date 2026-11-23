@@ -57,8 +57,6 @@ export function FlowAIBubble() {
   const navigate = useNavigate()
   const isProvider = user?.role === 'manager'
 
-  if (user?.role === 'admin') return null
-
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'data' | 'policy'>('data')
   const [messages, setMessages] = useState<Message[]>([])
@@ -92,6 +90,8 @@ export function FlowAIBubble() {
       }])
     }
   }, [open, user, isProvider, messages.length])
+
+  if (user?.role === 'admin') return null
 
   function handleBubbleClick() {
     if (!user) {
