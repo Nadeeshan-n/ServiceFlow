@@ -49,7 +49,7 @@ export default function AllRequestsJobs() {
 function RequestsView() {
   const [status, setStatus] = useState('')
   const data = useResource(
-    () => providerService.listIncomingRequests(status || undefined),
+    () => providerService.adminListRequests(status || undefined),
     [status],
   )
   return <>
@@ -71,7 +71,7 @@ function RequestsView() {
 function JobsView() {
   const [status, setStatus] = useState('')
   const data = useResource(
-    () => providerService.listJobs({ status: status || undefined }),
+    () => providerService.adminListJobs({ status: status || undefined }),
     [status],
   )
   return <>

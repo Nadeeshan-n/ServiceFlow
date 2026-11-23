@@ -232,6 +232,21 @@ def list_requests(db: Session, user: Any, *, status: str | None, limit: int, off
     return {"items": [_row_dict(row) for row in items], "total": total, "limit": limit, "offset": offset}
 
 
+def list_requests_admin(db: Session, *, status: str | None, limit: int, offset: int) -> dict[str, Any]:
+    """Platform-wide request list for SYSTEM_ADMIN: same rows and filters
+    as list_requests, but without the participant scope condition."""
+    t = tables(db)["service_requests"]
+    filters = []
+    if status is not None:
+        if status not in REQUEST_STATUSES:
+            fail(422, "Invalid request status")
+        filters.append(t.c.status == status)
+    total = db.scalar(select(func.count()).select_from(t).where(*filters)) or 0
+    items = db.execute(select(t).where(*filters).order_by(t.c.created_at.desc(), t.c.id.desc())
+                       .limit(limit).offset(offset)).mappings().all()
+    return {"items": [_row_dict(row) for row in items], "total": total, "limit": limit, "offset": offset}
+
+
 def get_request(db: Session, user: Any, request_id: int) -> dict[str, Any]:
     record = _find_request(db, request_id, user)
     attachments = tables(db)["request_attachments"]

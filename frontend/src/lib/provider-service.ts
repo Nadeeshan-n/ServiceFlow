@@ -164,6 +164,19 @@ export const providerService = {
     // ---- Admin: disputes ----
   adminListDisputes: () =>
     api<DisputeRow[]>('/admin/disputes'),
+
+
+    // ---- Admin: requests & jobs (platform-wide) ----
+  adminListRequests: (status?: string) =>
+    api<{ items: RequestRow[]; total: number; limit: number; offset: number }>(
+      `/admin/requests${status ? `?status=${status}` : ''}`,
+    ),
+  adminListJobs: (params?: { status?: string }) => {
+    const sp = new URLSearchParams()
+    if (params?.status) sp.set('status', params.status)
+    const qs = sp.toString() ? `?${sp.toString()}` : ''
+    return api<{ items: JobRow[]; total: number; limit: number; offset: number }>(`/admin/jobs${qs}`)
+  },
   adminUpdateDispute: (id: number, body: { status: DisputeRow['status']; admin_note?: string | null }) =>
     api<DisputeRow>(`/admin/disputes/${id}`, 'PATCH', body),
 

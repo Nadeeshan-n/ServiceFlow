@@ -240,6 +240,29 @@ def list_jobs(db: Session, user: Any, *, status: str | None, schedule_status: st
             "limit": limit, "offset": offset}
 
 
+def list_jobs_admin(db: Session, *, status: str | None, schedule_status: str | None,
+                    limit: int, offset: int) -> dict:
+    """Platform-wide job list for SYSTEM_ADMIN: same rows and filters
+    as list_jobs, but without the participant scope condition."""
+    jobs = tables(db)["jobs"]
+    filters = []
+    if status:
+        if status not in {"JOB_CREATED", "SCHEDULE_PROPOSED", "SCHEDULE_CONFIRMED",
+                          "IN_PROGRESS", "COMPLETED", "CANCELLED"}:
+            fail(422, "Invalid job status")
+        filters.append(jobs.c.status == status)
+    if schedule_status:
+        if schedule_status not in {"NOT_PROPOSED", "PENDING", "CONFIRMED"}:
+            fail(422, "Invalid schedule status")
+        filters.append(jobs.c.schedule_status == schedule_status)
+    total = db.scalar(select(func.count()).select_from(jobs).where(*filters)) or 0
+    rows = db.execute(select(jobs).where(*filters).order_by(
+        jobs.c.created_at.desc(), jobs.c.id.desc()
+    ).limit(limit).offset(offset)).mappings().all()
+    return {"items": [dict(row) for row in rows], "total": total,
+            "limit": limit, "offset": offset}
+
+
 def get_job(db: Session, user: Any, job_id: int) -> dict:
     job = _get_job(db, user, job_id)
     records = tables(db)["job_records"]
