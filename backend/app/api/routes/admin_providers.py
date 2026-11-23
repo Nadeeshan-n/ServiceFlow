@@ -18,6 +18,7 @@ from app.services.admin_provider_service import (
     approve_provider,
     reject_provider,
     suspend_provider,
+    reactivate_provider,
 )
 
 
@@ -110,5 +111,22 @@ def admin_suspend_provider(
 
     return {
         "message": "Provider suspended successfully",
+        "provider": provider,
+    }
+
+
+@router.patch(
+    "/{provider_id}/reactivate",
+    response_model=ProviderActionResponse,
+)
+def admin_reactivate_provider(
+    provider_id: int,
+    current_user: User = Depends(admin_required),
+    db: Session = Depends(get_db),
+):
+    provider = reactivate_provider(db, provider_id)
+
+    return {
+        "message": "Provider reactivated successfully",
         "provider": provider,
     }

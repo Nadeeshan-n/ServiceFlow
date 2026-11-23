@@ -231,3 +231,60 @@ def suspend_provider(db: Session, provider_id: int):
         raise
 
     return provider
+
+
+def reactivate_provider(db: Session, provider_id: int):
+    provider = db.scalar(
+        select(Provider)
+        .where(Provider.id == provider_id)
+        .with_for_update()
+    )
+
+    if provider is None:
+        raise HTTPException(404, "Provider not found")
+
+    if provider.verification_status != "SUSPENDED":
+        raise HTTPException(
+            409,
+            "Only suspended providers can be reactivated",
+        )
+
+    users = db.scalars(
+        select(User)
+        .where(
+            User.provider_id == provider.id,
+            User.role.in_([
+                "COMPANY_MANAGER",
+                "INDIVIDUAL_PROVIDER",
+            ]),
+        )
+        .with_for_update()
+    ).all()
+
+    if not users:
+        raise HTTPException(
+            409,
+            "Provider has no linked owner account",
+        )
+
+    provider.verification_status = "APPROVED"
+
+    for user in users:
+        user.status = "ACTIVE"
+
+    try:
+        with best_effort_notification(db, NotificationType.PROVIDER_APPROVED):
+            notify_provider_owners(
+                db,
+                provider_id=provider_id,
+                title="Provider Reactivated",
+                message="Your provider account was reactivated.",
+                notification_type=NotificationType.PROVIDER_APPROVED,
+            )
+        db.commit()
+        db.refresh(provider)
+    except Exception:
+        db.rollback()
+        raise
+
+    return provider

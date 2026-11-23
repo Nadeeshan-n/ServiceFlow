@@ -148,6 +148,7 @@ export const providerService = {
   adminApproveProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/approve`, 'PATCH'),
   adminRejectProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/reject`, 'PATCH'),
   adminSuspendProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/suspend`, 'PATCH'),
+  adminReactivateProvider: (id: number) => api<ProviderActionResponse>(`/admin/providers/${id}/reactivate`, 'PATCH'),
 
 
     // ---- Admin: service catalog ----

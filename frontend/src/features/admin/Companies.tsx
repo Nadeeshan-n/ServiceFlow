@@ -34,12 +34,13 @@ export default function AdminCompanies() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  async function act(id: number, action: 'approve' | 'reject' | 'suspend') {
+  async function act(id: number, action: 'approve' | 'reject' | 'suspend' | 'reactivate') {
     setBusy(id); setError(''); setSuccess('')
     try {
       const fn =
         action === 'approve' ? providerService.adminApproveProvider :
         action === 'reject' ? providerService.adminRejectProvider :
+        action === 'reactivate' ? providerService.adminReactivateProvider :
         providerService.adminSuspendProvider
       const res = await fn(id)
       setSuccess(res.message || `Provider #${id} ${action}d.`)
@@ -78,7 +79,7 @@ export default function AdminCompanies() {
 function ProviderCard({ provider, busy, onAction }: {
   provider: AdminProviderRow
   busy: boolean
-  onAction: (id: number, action: 'approve' | 'reject' | 'suspend') => void
+  onAction: (id: number, action: 'approve' | 'reject' | 'suspend' | 'reactivate') => void
 }) {
   const s = provider.verification_status
   return <SurfaceCard className="space-y-3 p-4">
@@ -102,14 +103,19 @@ function ProviderCard({ provider, busy, onAction }: {
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
       <p className="text-xs text-text-secondary">Registered {dateTime(provider.created_at)}</p>
       <div className="flex flex-wrap gap-2">
-        {s !== 'APPROVED' && (
+        {s !== 'APPROVED' && s !== 'SUSPENDED' && (
           <ActionButton variant="stamp" size="small" onClick={() => onAction(provider.id, 'approve')} disabled={busy}>
             Approve
           </ActionButton>
         )}
-        {s !== 'REJECTED' && (
+        {s !== 'REJECTED' && s !== 'SUSPENDED' && (
           <ActionButton variant="void" size="small" onClick={() => onAction(provider.id, 'reject')} disabled={busy}>
             Reject
+          </ActionButton>
+        )}
+        {s === 'SUSPENDED' && (
+          <ActionButton variant="stamp" size="small" onClick={() => onAction(provider.id, 'reactivate')} disabled={busy}>
+            Reactivate
           </ActionButton>
         )}
         {s === 'APPROVED' && (
