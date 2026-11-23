@@ -1,8 +1,20 @@
 export const demoMode = import.meta.env.VITE_DEMO_MODE !== 'false'
 export const liveApiMode = import.meta.env.VITE_USE_LIVE_API === 'true'
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
-let accessToken: string | null = null
-export function setAccessToken(value: string | null) { accessToken = value }
+const TOKEN_KEY = 'sf_token'
+
+function readStoredToken(): string | null {
+  try { return window.localStorage.getItem(TOKEN_KEY) } catch { return null }
+}
+
+let accessToken: string | null = readStoredToken()
+export function setAccessToken(value: string | null) {
+  accessToken = value
+  try {
+    if (value) window.localStorage.setItem(TOKEN_KEY, value)
+    else window.localStorage.removeItem(TOKEN_KEY)
+  } catch {}
+}
 
 export class ApiError extends Error {
   constructor(message: string, public status = 400, public fieldErrors: Record<string, string> = {}){ super(message) }
@@ -48,8 +60,7 @@ export async function api<T>(
       || (typeof data?.detail === 'string' ? data.detail : undefined)
       || (response.status === 422 ? 'Please check the highlighted fields.' : 'This action could not be completed. Refresh and try again.')
     if (response.status === 401) {
-      accessToken = null
-      try { window.localStorage.removeItem('sf_token') } catch {}
+      setAccessToken(null)
     }
     throw new ApiError(message, response.status, fields)
   }
