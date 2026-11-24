@@ -4,7 +4,8 @@ import type {
   ServiceArea, WorkingHour,
   RequestRow, RequestMessage, QuotationItem, QuotationRow,
   InvoiceRow, PaymentRow,
-  JobRow, JobDetailRow, EmployeeRow, 
+  JobRow, JobDetailRow, EmployeeRow,
+  ProviderReviewRow,
   EmployeeCreateResponse, EmployeeUpdateInput,
   AdminProviderRow, ProviderActionResponse,
   DisputeRow,NotificationRow, NotificationList,RequestAttachmentRow,
@@ -13,6 +14,7 @@ import type {
 export const providerService = {
   // ---- Provider profile ----
   getProfile: () => api<Provider>('/providers/me'),
+  listReviews: (providerId: number) => api<ProviderReviewRow[]>(`/providers/${providerId}/reviews`),
   updateProfile: (body: Partial<Provider>) => api<Provider>('/providers/me', 'PATCH', body),
 
   // ---- Offerings ----

@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, Field, field_validator
@@ -94,6 +95,7 @@ class ProviderSummary(BaseModel):
     accepting_requests: bool
     rating: float | None
     completed_jobs: int
+    review_count: int
     starting_price: Decimal | None
 
 
@@ -106,10 +108,18 @@ class PublicPolicy(BaseModel):
 
 
 class ProviderDetail(ProviderSummary):
-    review_count: int
     email: str
     phone: str
     address: str | None
     areas: list[str]
     services: list[PublicOffering]
     policies: list[PublicPolicy]
+
+
+class ProviderReview(BaseModel):
+    job_id: int
+    rating: int
+    review_text: str | None
+    reviewed_at: datetime
+    client_name: str
+    service_name: str

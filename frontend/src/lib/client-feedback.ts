@@ -2,9 +2,10 @@ import { clientService } from './client-service'
 import { demoAccount, requireDemo } from './demo-account'
 import { ApiError, demoMode, liveApiMode, api } from './api'
 
-export type Review = { id: string; client_id: string; company_id: string; job_id: string; author: string; rating: number; comment: string }
+export type Review = { id: string; client_id: string; company_id: string; job_id: string; author: string; rating: number; comment: string; service_name?: string; reviewed_at?: string }
 export type Dispute = { id: string; client_id: string; record_id: string; kind: 'request' | 'job'; reason: string; description?: string; status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'CLOSED'; created_at: string }
 type ApiRating = { job_id: number; rating: number; review_text?: string | null; reviewed_at: string }
+type ApiProviderReview = { job_id: number; rating: number; review_text?: string | null; reviewed_at: string; client_name: string; service_name: string }
 type ApiDispute = { id: number; job_id: number; opened_by: number; reason: string; description: string; status: string; admin_note?: string | null; created_at: string; closed_at?: string | null }
 const reviews: Review[] = []
 const disputes: Dispute[] = []
@@ -16,7 +17,14 @@ function mapDispute(value: ApiDispute): Dispute {
 
 export const clientFeedback = {
   async publicReviews(companyId: string) {
-    if (live()) return structuredClone([] as Review[])
+    if (live()) {
+      const rows = await api<ApiProviderReview[]>(`/providers/${encodeURIComponent(companyId)}/reviews`)
+      return rows.map(row => ({
+        id: String(row.job_id), client_id: '', company_id: companyId, job_id: String(row.job_id),
+        author: row.client_name, rating: row.rating, comment: row.review_text || '',
+        service_name: row.service_name, reviewed_at: row.reviewed_at,
+      }) as Review)
+    }
     requireDemo('Public reviews')
     return structuredClone(reviews.filter(review => review.company_id === companyId))
   },

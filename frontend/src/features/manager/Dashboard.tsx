@@ -1,21 +1,24 @@
 import { useNavigate } from 'react-router-dom'
-import { ActionButton, SurfaceCard } from '../../components'
+import { ActionButton, StarRating, SurfaceCard } from '../../components'
 import { Resource, useResource } from '../../components/client-shared'
 import { providerService } from '../../lib/provider-service'
-import type { InvoiceRow, JobRow, RequestRow } from '../../types/provider'
+import type { InvoiceRow, JobRow, ProviderReviewRow, RequestRow } from '../../types/provider'
 
 export default function ManagerDashboard() {
   const navigate = useNavigate()
   const data = useResource(async () => {
-    const [requests, jobs, invoices] = await Promise.all([
+    const [requests, jobs, invoices, profile] = await Promise.all([
       providerService.listIncomingRequests(),
       providerService.listJobs(),
       providerService.listInvoices(),
+      providerService.getProfile(),
     ])
+    const reviews = await providerService.listReviews(profile.id).catch(() => [] as ProviderReviewRow[])
     return {
       requests: requests.items,
       jobs: jobs.items,
       invoices: invoices.items,
+      reviews,
     }
   })
 
@@ -30,16 +33,18 @@ export default function ManagerDashboard() {
         requests={data.data.requests}
         jobs={data.data.jobs}
         invoices={data.data.invoices}
+        reviews={data.data.reviews}
         onNavigate={navigate}
       />}
     </Resource>
   </>
 }
 
-function DashboardContent({ requests, jobs, invoices, onNavigate }: {
+function DashboardContent({ requests, jobs, invoices, reviews, onNavigate }: {
   requests: RequestRow[]
   jobs: JobRow[]
   invoices: InvoiceRow[]
+  reviews: ProviderReviewRow[]
   onNavigate: (path: string) => void
 }) {
   const newRequests = requests.filter(r => r.status === 'NEW').length
@@ -129,6 +134,27 @@ function DashboardContent({ requests, jobs, invoices, onNavigate }: {
                   </p>
                 </div>
                 <span className="text-xs text-text-secondary">{r.preferred_date}</span>
+              </li>
+            ))}
+          </ul>}
+    </SurfaceCard>
+
+    <SurfaceCard className="mt-4 p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Customer reviews</h2>
+        {reviews.length > 0 && <span className="flex items-center gap-2 text-sm text-text-secondary">
+          <StarRating rating={reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length} />
+          <span className="sf-tabular">{(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)} / 5 · {reviews.length} review{reviews.length === 1 ? '' : 's'}</span>
+        </span>}
+      </div>
+      {reviews.length === 0
+        ? <p className="text-sm text-text-secondary">No reviews yet. When a client rates a completed job, it will appear here and on your public profile.</p>
+        : <ul className="divide-y divide-line">
+            {reviews.slice(0, 5).map(r => (
+              <li key={r.job_id} className="py-3">
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium">{r.client_name} <StarRating rating={r.rating} /></p>
+                {r.review_text && <p className="mt-1 text-sm whitespace-pre-wrap">{r.review_text}</p>}
+                <p className="sf-mono mt-1 text-xs text-text-secondary">{r.service_name} · {new Date(r.reviewed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </li>
             ))}
           </ul>}

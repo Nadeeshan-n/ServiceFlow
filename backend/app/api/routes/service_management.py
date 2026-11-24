@@ -11,6 +11,7 @@ from app.schemas.service_management import (
     OfferingPatch,
     OfferingRead,
     ProviderDetail,
+    ProviderReview,
     ProviderSummary,
     ServiceCreate,
     ServicePatch,
@@ -63,6 +64,11 @@ def list_providers(
 @router.get("/providers/{id}", response_model=ProviderDetail, tags=["Marketplace"])
 def provider_profile(id: PositiveId, db: Database):
     return services.public_provider(db, id)
+
+
+@router.get("/providers/{id}/reviews", response_model=list[ProviderReview], tags=["Marketplace"])
+def provider_reviews(id: PositiveId, db: Database):
+    return services.provider_reviews(db, id)
 
 
 @router.get("/provider/me/services", response_model=list[OfferingRead], tags=["Provider services"])

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, ArrowUpRight, GitCompareArrows, MapPin, Search, ShieldCheck, X } from 'lucide-react'
-import { Modal } from '../../../components'
+import { Modal, StarRating } from '../../../components'
 import { money } from '../../../components/client-shared'
 import type { Company } from '../../../types/client'
 
@@ -108,9 +108,10 @@ export function ProviderExplorer({ companies, query, onQueryChange, onPickProvid
               <span className="rounded-docket bg-graphite p-1 text-white" role="img" aria-label="Verified provider" title="Verified provider"><ShieldCheck size={15} aria-hidden="true" /></span>
             </h3>
             <p>{company.description}</p>
-            <p className="mt-3 text-sm text-text-secondary">
-              <span className="text-signal-text" aria-hidden="true">★</span>{' '}
+            <p className="mt-3 flex items-center gap-2 text-sm text-text-secondary">
+              <StarRating rating={company.rating ?? 0} />
               <span className="sf-tabular">{company.rating != null ? company.rating.toFixed(1) : 'New'}</span>
+              {company.rating != null && <span>· {company.review_count ?? 0} review{(company.review_count ?? 0) === 1 ? '' : 's'}</span>}
               {' · '}<span className="sf-tabular">{company.completed_jobs ?? 0}</span> job{(company.completed_jobs ?? 0) === 1 ? '' : 's'} completed
             </p>
             <p className="sf-availability">{company.offerings.some(o => o.active) ? '● Accepting requests' : '○ Ask for availability'}</p>

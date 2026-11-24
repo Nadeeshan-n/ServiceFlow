@@ -3,7 +3,7 @@ import {
   BadgeCheck, Ban, Banknote, BriefcaseBusiness, Building2, CalendarCheck2, CalendarDays,
   CheckCheck, ChevronDown, CircleCheck, CircleX, ClipboardList, Clock3, Download, Ellipsis,
   Eye, FileSearch, FileText, Grid2X2, House, LayoutDashboard, ListFilter, LogOut, MapPin, Menu, MessageCircleQuestion,
-  Pencil, Play, Plus, Receipt, Search, Settings, ShieldCheck, Sparkles, TriangleAlert, Upload, UserRound,
+  Pencil, Play, Plus, Receipt, Search, Settings, ShieldCheck, Sparkles, Star, StarHalf, TriangleAlert, Upload, UserRound,
   UserRoundCheck, Users, X, type LucideIcon
 } from 'lucide-react'
 
@@ -71,6 +71,21 @@ export function TextAreaField({ label, hint, error, id, required, className, ...
 }
 export const DateField = (props: Omit<React.ComponentProps<typeof TextField>,'type'>) => <TextField {...props} type="date"/>
 export const TimeField = (props: Omit<React.ComponentProps<typeof TextField>,'type'>) => <TextField {...props} type="time"/>
+
+export function StarRating({ rating, size = 14, className }: { rating: number; size?: number; className?: string }) {
+  const stars = [1, 2, 3, 4, 5].map(index => {
+    if (rating >= index - 0.25) return 'full'
+    if (rating >= index - 0.75) return 'half'
+    return 'empty'
+  })
+  return <span className={cx('inline-flex items-center gap-0.5', className)} role="img" aria-label={`Rated ${rating.toFixed(1)} out of 5`}>
+    {stars.map((kind, index) => kind === 'full'
+      ? <Star key={index} size={size} className="text-signal-text" fill="currentColor" aria-hidden="true" />
+      : kind === 'half'
+        ? <StarHalf key={index} size={size} className="text-signal-text" fill="currentColor" aria-hidden="true" />
+        : <Star key={index} size={size} className="text-text-secondary" aria-hidden="true" />)}
+  </span>
+}
 
 export function SurfaceCard({ children, className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} className={cx('sf-card',className)}>{children}</div>

@@ -241,3 +241,12 @@ export type RequestAttachmentRow = {
   content_type: string
   created_at: string
 }
+
+export type ProviderReviewRow = {
+  job_id: number
+  rating: number
+  review_text: string | null
+  reviewed_at: string
+  client_name: string
+  service_name: string
+}

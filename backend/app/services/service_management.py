@@ -11,12 +11,14 @@ from app.models.provider import Provider
 from app.models.provider_area import ProviderArea
 from app.models.provider_service import ProviderService
 from app.models.service import Service
+from app.models.service_request import ServiceRequest
 from app.models.user import User
 from app.schemas.service_management import (
     OfferingCreate,
     OfferingPatch,
     OfferingRead,
     ProviderDetail,
+    ProviderReview,
     ProviderSummary,
     PublicOffering,
     PublicPolicy,
@@ -188,14 +190,16 @@ def _directory_query(service_id: int | None = None):
             Job.provider_id,
             func.avg(Job.rating).label("rating"),
             func.count(Job.id).label("completed_jobs"),
+            func.count(Job.rating).label("review_count"),
         )
         .where(Job.status == "COMPLETED")
         .group_by(Job.provider_id)
         .subquery()
     )
     completed_jobs = func.coalesce(stats.c.completed_jobs, 0)
+    review_count = func.coalesce(stats.c.review_count, 0)
     query = (
-        select(Provider, stats.c.rating, completed_jobs, prices.c.starting_price)
+        select(Provider, stats.c.rating, completed_jobs, review_count, prices.c.starting_price)
         .outerjoin(stats, stats.c.provider_id == Provider.id)
         .outerjoin(prices, prices.c.provider_id == Provider.id)
         .where(Provider.verification_status == "APPROVED")
@@ -209,7 +213,7 @@ def _directory_query(service_id: int | None = None):
     }
 
 
-def _provider_summary(provider, rating, completed_jobs, starting_price) -> ProviderSummary:
+def _provider_summary(provider, rating, completed_jobs, review_count, starting_price) -> ProviderSummary:
     return ProviderSummary(
         id=provider.id,
         type=provider.type,
@@ -218,6 +222,7 @@ def _provider_summary(provider, rating, completed_jobs, starting_price) -> Provi
         accepting_requests=provider.accepting_requests,
         rating=float(rating) if rating is not None else None,
         completed_jobs=completed_jobs,
+        review_count=int(review_count),
         starting_price=starting_price,
     )
 
@@ -252,19 +257,13 @@ def search_providers(
 
 def public_provider(db: Session, provider_id: int) -> ProviderDetail:
     query, _ = _directory_query()
-    review_count = (
-        select(func.count(Job.rating))
-        .where(Job.provider_id == Provider.id, Job.status == "COMPLETED")
-        .correlate(Provider)
-        .scalar_subquery()
-    )
     row = db.execute(
-        query.add_columns(review_count).where(Provider.id == provider_id)
+        query.where(Provider.id == provider_id)
     ).one_or_none()
     if row is None:
         raise HTTPException(404, "Provider not found")
-    provider, rating, completed_jobs, starting_price, count = row
-    summary = _provider_summary(provider, rating, completed_jobs, starting_price)
+    provider, rating, completed_jobs, review_count, starting_price = row
+    summary = _provider_summary(provider, rating, completed_jobs, review_count, starting_price)
 
     areas = db.scalars(
         select(ProviderArea.area_name)
@@ -291,7 +290,6 @@ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
         .order_by(Policy.id)
     )
     return ProviderDetail(
-        review_count=count,
         **summary.model_dump(),
         email=provider.email,
         phone=provider.phone,
@@ -309,3 +307,33 @@ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
         ],
         policies=[PublicPolicy.model_validate(policy) for policy in policies],
     )
+
+
+def provider_reviews(db: Session, provider_id: int) -> list[ProviderReview]:
+    provider = db.scalar(
+        select(Provider.id).where(
+            Provider.id == provider_id,
+            Provider.verification_status == "APPROVED",
+        )
+    )
+    if provider is None:
+        raise HTTPException(404, "Provider not found")
+    rows = db.execute(
+        select(Job, User.name, Service.name)
+        .join(ServiceRequest, ServiceRequest.id == Job.request_id)
+        .join(User, User.id == ServiceRequest.client_id)
+        .join(Service, Service.id == ServiceRequest.service_id)
+        .where(Job.provider_id == provider_id, Job.rating.is_not(None))
+        .order_by(Job.reviewed_at.desc(), Job.id.desc())
+    )
+    return [
+        ProviderReview(
+            job_id=job.id,
+            rating=job.rating,
+            review_text=job.review_text,
+            reviewed_at=job.reviewed_at,
+            client_name=client_name,
+            service_name=service_name,
+        )
+        for job, client_name, service_name in rows
+    ]
