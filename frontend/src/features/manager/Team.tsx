@@ -71,7 +71,7 @@ export default function ManagerTeam() {
         </Notice>
         <div className="mt-4 space-y-2 rounded-docket border border-line bg-paper p-4 text-sm">
           <div><span className="text-text-secondary">Email:</span> <strong>{revealedPassword.email}</strong></div>
-          <div><span className="text-text-secondary">Initial password:</span> <strong className="sf-mono">{revealedPassword.password}</strong></div>
+          <div><span className="text-text-secondary">Initial password:</span> <strong className="sf-mono" style={{ textTransform: 'none' }}>{revealedPassword.password}</strong></div>
         </div>
         <div className="mt-4 flex justify-end">
           <ActionButton variant="stamp" onClick={() => setRevealedPassword(null)}>Done</ActionButton>
