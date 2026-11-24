@@ -242,6 +242,7 @@ def get_my_account(
         "status": current_user.status,
         "email_verified": current_user.email_verified_at is not None,
         "company_status": company_status,
+        "must_change_password": current_user.must_change_password,
     }
 @router.get("/admin-test")
 def admin_test(

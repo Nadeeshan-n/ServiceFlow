@@ -75,4 +75,7 @@ class AuthMeResponse(RegisterResponse):
     # Provider verification status; null for client/system-admin accounts.
     # Kept under company_status for the existing frontend contract.
     company_status: str | None = None
+    # True while the account still uses a temporary/initial password; the
+    # frontend routes those users to the change-password page.
+    must_change_password: bool = False
 
