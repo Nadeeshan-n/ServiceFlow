@@ -1,14 +1,20 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
-  ArrowRight, ArrowUpRight, Building2, CalendarCheck, Car, ClipboardCheck, ClipboardList,
-  FileText, MapPin, PaintRoller, Plug, Search, ShieldCheck, Sparkles, Wrench, Zap,
+  ArrowRight, ArrowUpRight, Building2, CalendarCheck, Car, CheckCircle2, ClipboardCheck, ClipboardList,
+  FileText, PaintRoller, Plug, Search, Sparkles, Wrench, Zap,
 } from 'lucide-react'
-import { FlowAIPanel, StatusBadge, SurfaceCard, Tabs } from '../../components'
-import { money, Resource, useResource } from '../../components/client-shared'
+import { Tabs } from '../../components'
+import { Resource, useResource } from '../../components/client-shared'
 import { clientService } from '../../lib/client-service'
 import { demoMode } from '../../lib/api'
 import { destination, useSession } from '../../app/session'
+import { initialLab, type LabState } from './landing/data'
+import { TicketLab } from './landing/TicketLab'
+import { DocketBoard } from './landing/DocketBoard'
+import { ProviderExplorer } from './landing/ProviderExplorer'
+import { Estimator } from './landing/Estimator'
+import { FlowAIChat } from './landing/FlowAIChat'
 
 const categories = [
   { name: 'Plumbing', icon: Wrench, keyword: 'plumb' },
@@ -40,88 +46,105 @@ const howSteps = {
 } as const
 
 type HowPath = keyof typeof howSteps
+type Toast = { id: number; text: string }
+
+function CountUp({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0)
+  const current = useRef(0)
+  useEffect(() => {
+    const from = current.current
+    if (from === value) return
+    const start = performance.now()
+    let frame = 0
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - start) / 700)
+      const next = Math.round(from + (value - from) * (1 - Math.pow(1 - progress, 3)))
+      current.current = next
+      setDisplay(next)
+      if (progress < 1) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [value])
+  return <span className="sf-tabular">{display}</span>
+}
 
 export function LandingPage() {
   const { user } = useSession()
-  const navigate = useNavigate()
   const resource = useResource(() => clientService.companies())
   const companies = resource.data ?? []
-  const [serviceQuery, setServiceQuery] = useState('')
-  const [areaQuery, setAreaQuery] = useState('')
+
+  const [lab, setLab] = useState<LabState>(initialLab)
+  const [sendSignal, setSendSignal] = useState(0)
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const [boardCounts, setBoardCounts] = useState({ total: 0, done: 0 })
+  const [explorerQuery, setExplorerQuery] = useState('')
   const [howPath, setHowPath] = useState<HowPath>('client')
+  const [activeStep, setActiveStep] = useState(0)
+  const [howPaused, setHowPaused] = useState(false)
+  const [progress, setProgress] = useState(0)
 
-  const showcase = [...companies]
-    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.completed_jobs ?? 0) - (a.completed_jobs ?? 0))
-    .slice(0, 4)
-
-  const startingPrice = (offers: typeof companies[number]['offerings']) => {
-    const prices = offers.filter(offer => offer.active).map(offer => offer.starting_price)
-    return prices.length ? Math.min(...prices) : null
+  function notify(text: string) {
+    const id = Date.now() + Math.random()
+    setToasts(current => [...current.slice(-2), { id, text }])
+    window.setTimeout(() => setToasts(current => current.filter(toast => toast.id !== id)), 4200)
   }
 
-  function submitSearch(event: FormEvent) {
+  useEffect(() => {
+    function onScroll() {
+      const height = document.documentElement.scrollHeight - window.innerHeight
+      setProgress(height > 0 ? Math.min(1, window.scrollY / height) : 0)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    if (howPaused) return
+    const timer = window.setInterval(() => setActiveStep(step => (step + 1) % 3), 4500)
+    return () => window.clearInterval(timer)
+  }, [howPaused, howPath])
+
+  function submitHeroSearch(event: FormEvent) {
     event.preventDefault()
-    const query = [serviceQuery, areaQuery].map(part => part.trim()).filter(Boolean).join(' ')
-    navigate(query ? `/companies?search=${encodeURIComponent(query)}` : '/companies')
+    document.getElementById('providers')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return <>
-    {/* Hero */}
-    <section className="sf-landing-hero sf-dotgrid">
-      <div>
-        <p className="sf-eyebrow"><span />LOCAL EXPERTISE. CLEAR NEXT STEPS.</p>
+    <div className="sf-scroll-progress" style={{ transform: `scaleX(${progress})` }} aria-hidden="true" />
+
+    {/* Hero — Ticket Lab */}
+    <section className="sf-lab-hero">
+      <div className="sf-lab-hero-copy">
+        <p className="sf-eyebrow sf-eyebrow-dark"><span />DON'T READ ABOUT IT. RUN IT.</p>
         <h1 className="sf-display text-4xl font-bold md:text-6xl">
           Find a service provider<br />you can <span className="sf-marker">trust.</span>
         </h1>
-        <p className="my-6 max-w-xl text-lg text-text-secondary">
-          Browse verified local companies and individual providers, agree the price before work begins, and follow every step from request to invoice.
+        <p className="my-6 max-w-xl text-lg">
+          This ticket is live. Pick a trade, watch it price itself, stamp the quotation approved and send it to the board — the same journey a real job takes on ServiceFlow.
         </p>
-        <form className="sf-landing-search" onSubmit={submitSearch} role="search" aria-label="Find a service provider">
+        <form className="sf-landing-search" onSubmit={submitHeroSearch} role="search" aria-label="Find a service provider">
           <label className="sf-landing-search-field">
             <Search size={18} aria-hidden="true" />
-            <span className="sr-only">Service</span>
-            <input type="search" value={serviceQuery} onChange={event => setServiceQuery(event.target.value)} placeholder="Service — e.g. plumbing" />
+            <span className="sr-only">Service or provider</span>
+            <input type="search" value={explorerQuery} onChange={event => setExplorerQuery(event.target.value)} placeholder="Service or provider — filters the explorer below" />
           </label>
-          <label className="sf-landing-search-field">
-            <MapPin size={18} aria-hidden="true" />
-            <span className="sr-only">Location</span>
-            <input type="text" value={areaQuery} onChange={event => setAreaQuery(event.target.value)} placeholder="Location — e.g. Colombo" />
-          </label>
-          <button type="submit" className="sf-primary-link">Find Providers</button>
+          <button type="submit" className="sf-primary-link">Explore providers</button>
         </form>
         <div className="flex flex-wrap gap-4">
           {user
-            ? <Link className="sf-secondary-link" to={destination(user)}>Go to your dashboard <ArrowRight size={16} /></Link>
-            : <Link className="sf-secondary-link" to="/register">Join as a Provider <ArrowRight size={16} /></Link>}
+            ? <Link className="sf-lab-dash-link" to={destination(user)}>Go to your dashboard <ArrowRight size={16} /></Link>
+            : <Link className="sf-lab-dash-link" to="/register">Join as a Provider <ArrowRight size={16} /></Link>}
         </div>
+        <p className="sf-mono mt-6 text-[11px]">SAMPLE TICKET · NO ACCOUNT NEEDED TO PLAY</p>
       </div>
-
-      {/* Sample job ticket */}
-      <div className="sf-hero-ticket-wrap">
-        <SurfaceCard className="sf-hero-ticket p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="sf-mono text-[11px] text-text-secondary">SF-JOB-2087</p>
-              <h2 className="sf-display mt-2 text-xl font-semibold">Plumbing Inspection</h2>
-              <p className="mt-1 text-sm text-text-secondary">BrightFix · Client: Nimal Fernando</p>
-            </div>
-            <span className="sf-mono text-[11px] text-text-secondary">Sample preview</span>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <StatusBadge status="scheduled" />
-            <StatusBadge status="unpaid" />
-          </div>
-          <dl className="sf-ticket-lines">
-            <div><dt>Inspection fee</dt><dd className="sf-tabular">{money(2500)}</dd></div>
-            <div><dt>Call-out</dt><dd className="sf-tabular">{money(500)}</dd></div>
-            <div className="sf-ticket-total"><dt>Total</dt><dd className="sf-tabular">{money(3000)}</dd></div>
-          </dl>
-          <div className="sf-separator mt-4 flex items-end justify-between gap-3 pt-4">
-            <div className="sf-barcode" aria-hidden="true" />
-            <span className="sf-approval-stamp">Quotation approved ✓</span>
-          </div>
-        </SurfaceCard>
-      </div>
+      <TicketLab
+        lab={lab}
+        onChange={setLab}
+        onSendToBoard={() => setSendSignal(signal => signal + 1)}
+        notify={notify}
+      />
     </section>
 
     {/* Dispatch ticker */}
@@ -132,6 +155,27 @@ export function LandingPage() {
         ))}
       </div>
     </div>
+
+    {/* Live counters */}
+    <section className="sf-counters" aria-label="ServiceFlow in numbers">
+      <div><strong><CountUp value={companies.length} /></strong><span>Providers listed{demoMode ? ' (sample)' : ''}</span></div>
+      <div><strong><CountUp value={boardCounts.total} /></strong><span>Jobs on the board below</span></div>
+      <div><strong><CountUp value={boardCounts.done} /></strong><span>Jobs you finished</span></div>
+      <div><strong><CountUp value={5} /></strong><span>Stages from request to invoice</span></div>
+    </section>
+
+    {/* Live Docket Board */}
+    <section className="sf-directory-section" aria-labelledby="landing-board">
+      <div className="sf-section-heading">
+        <div>
+          <p className="sf-eyebrow"><span />LIVE DOCKET BOARD</p>
+          <h2 id="landing-board">Every job, on one board.</h2>
+          <p>This is how work moves on ServiceFlow — requests become quotations, quotations become scheduled jobs, and finished jobs issue their invoice.</p>
+        </div>
+      </div>
+      <DocketBoard lab={lab} sendSignal={sendSignal} notify={notify}
+        onCounts={(total, done) => setBoardCounts(current => current.total === total && current.done === done ? current : { total, done })} />
+    </section>
 
     {/* Categories */}
     <section className="sf-directory-section" aria-labelledby="landing-categories">
@@ -146,108 +190,76 @@ export function LandingPage() {
         {categories.map(({ name, icon: Icon, keyword }) => {
           const count = companies.filter(company =>
             `${company.category} ${company.offerings.map(offer => offer.name).join(' ')}`.toLowerCase().includes(keyword)).length
-          return <Link key={name} className="sf-category-card" to={`/companies?search=${encodeURIComponent(name)}`}>
+          return <button key={name} type="button" className="sf-category-card" onClick={() => { setExplorerQuery(name); document.getElementById('providers')?.scrollIntoView({ behavior: 'smooth' }) }}>
             <Icon size={24} aria-hidden="true" />
             <span className="sf-display font-semibold">{name}</span>
             <span className="text-sm text-text-secondary">{count ? `${count} provider${count === 1 ? '' : 's'} listed` : 'Browse providers'}</span>
-          </Link>
+          </button>
         })}
       </div>
     </section>
 
-    {/* Provider showcase */}
-    <section className="sf-directory-section" aria-labelledby="landing-providers">
+    {/* Provider explorer */}
+    <section className="sf-directory-section" id="providers" aria-labelledby="landing-providers">
       <div className="sf-section-heading">
         <div>
           <p className="sf-eyebrow"><span />VERIFIED PROVIDERS</p>
           <h2 id="landing-providers">Providers on ServiceFlow</h2>
-          <p>Compare ratings, completed jobs and starting prices before you send a request.</p>
+          <p>Search, filter and sort live — then pin two providers and compare them head-to-head.</p>
         </div>
         <span className="sf-directory-note">{demoMode ? 'Sample listings' : 'Live listings'}<br />Starting prices shown. Your quotation confirms the total.</span>
       </div>
       <Resource {...resource} retry={resource.reload}>
-        {showcase.length ? <div className="sf-company-grid">
-          {showcase.map((company, index) => {
-            const price = startingPrice(company.offerings)
-            const initials = company.name.split(' ').map(part => part[0]).slice(0, 2).join('')
-            return <article key={company.id} className="sf-company-card">
-              <div className={`sf-company-card-top sf-company-tone-${index % 3}`}>
-                <span className="sf-company-symbol sf-display font-semibold" aria-hidden="true">{initials}</span>
-                <span className="sf-mono">{company.category}</span>
-                <ArrowUpRight size={20} className="ml-auto" />
-              </div>
-              <div className="sf-company-card-body">
-                <div className="sf-company-location"><MapPin size={14} />{company.location}</div>
-                <h3 className="flex items-center gap-2">
-                  <Link to={`/companies/${company.id}`}>{company.name}</Link>
-                  <span className="rounded-docket bg-graphite p-1 text-white" role="img" aria-label="Verified provider" title="Verified provider"><ShieldCheck size={15} aria-hidden="true" /></span>
-                </h3>
-                <p>{company.description}</p>
-                <p className="mt-3 text-sm text-text-secondary">
-                  <span className="text-signal-text" aria-hidden="true">★</span>{' '}
-                  <span className="sf-tabular">{company.rating != null ? company.rating.toFixed(1) : 'New'}</span>
-                  {' · '}<span className="sf-tabular">{company.completed_jobs ?? 0}</span> job{(company.completed_jobs ?? 0) === 1 ? '' : 's'} completed
-                </p>
-                <div className="sf-offering-tags">
-                  {company.offerings.filter(offer => offer.active).slice(0, 3).map(offer => <span key={offer.id}>{offer.name}</span>)}
-                </div>
-                <div className="sf-company-card-bottom">
-                  <div><small>STARTING FROM</small><strong>{price != null ? money(price) : 'Price on quotation'}</strong></div>
-                  <Link className="sf-company-open" to={`/companies/${company.id}`} aria-label={`View provider → ${company.name}`}><ArrowRight size={20} /></Link>
-                </div>
-              </div>
-            </article>
-          })}
-        </div> : <p className="text-text-secondary">No providers are listed yet — check back soon.</p>}
+        {companies.length
+          ? <ProviderExplorer companies={companies} query={explorerQuery} onQueryChange={setExplorerQuery}
+              onPickProvider={name => { setLab(current => ({ ...current, providerName: name })); notify(`${name} loaded into your ticket — scroll up to the Ticket Lab.`); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+              notify={notify} />
+          : <p className="text-text-secondary">No providers are listed yet — check back soon.</p>}
       </Resource>
       <p className="mt-6"><Link className="sf-secondary-link" to="/companies">Browse all providers <ArrowRight size={16} /></Link></p>
     </section>
 
-    {/* How it works */}
-    <section className="sf-how-section" id="how-it-works">
+    {/* How it works — auto-advancing timeline */}
+    <section className="sf-how-section" id="how-it-works"
+      onMouseEnter={() => setHowPaused(true)} onMouseLeave={() => setHowPaused(false)}
+      onFocus={() => setHowPaused(true)} onBlur={() => setHowPaused(false)}>
       <div className="sf-section-heading">
         <div>
           <p className="sf-eyebrow"><span />HOW IT WORKS</p>
           <h2>From request to invoice,<br />in the open.</h2>
         </div>
-        <p>Two sides, one clear process.<br className="hidden md:block" />Pick the path that fits you.</p>
+        <p>Two sides, one clear process.<br className="hidden md:block" />Pick the path that fits you — it plays on its own, hover to pause.</p>
       </div>
       <Tabs
         label="How ServiceFlow works"
         items={[{ key: 'client', label: 'For Clients' }, { key: 'provider', label: 'For Providers' }]}
         value={howPath}
-        onChange={setHowPath}
+        onChange={value => { setHowPath(value); setActiveStep(0) }}
       >
         <div className="sf-how-grid">
           {howSteps[howPath].map(({ icon: Icon, title, text }, index) => (
-            <div key={title}>
+            <button key={title} type="button" className={`sf-how-card ${index === activeStep ? 'is-active' : ''}`} onClick={() => setActiveStep(index)}>
               <span className="sf-how-number">0{index + 1}</span>
               <Icon size={24} /><h3>{title}</h3><p>{text}</p>
-            </div>
+              {index === activeStep && !howPaused && <span key={`${howPath}-${activeStep}`} className="sf-how-progress" aria-hidden="true" />}
+            </button>
           ))}
         </div>
       </Tabs>
     </section>
 
-    {/* Flow AI sample */}
-    <section className="sf-directory-section" aria-labelledby="landing-flow-ai">
+    {/* Estimator + Flow AI */}
+    <section className="sf-directory-section" aria-labelledby="landing-tools">
       <div className="sf-section-heading">
         <div>
-          <p className="sf-eyebrow"><span />FLOW AI</p>
-          <h2 id="landing-flow-ai">Answers from the policy,<br />not from guesswork.</h2>
-          <p>Flow AI answers questions only from a provider's uploaded policy documents — and says so when the document doesn't cover the question. Sample preview:</p>
+          <p className="sf-eyebrow"><span />TRY THE TOOLS</p>
+          <h2 id="landing-tools">Price it. Then ask the policy.</h2>
+          <p>Estimate a job with sample rates and push it onto your ticket — then ask Flow AI what the policy actually says.</p>
         </div>
       </div>
-      <div className="sf-flowai-grid">
-        <FlowAIPanel
-          question="What is the call-out fee for a basic inspection?"
-          answer="The basic inspection is LKR 3,000 in total: an inspection fee of LKR 2,500 plus a call-out fee of LKR 500."
-          source="BrightFix Service Policy"
-          page={2}
-        />
-        <FlowAIPanel
-          question="Do you offer a lifetime warranty on repairs?"
-        />
+      <Estimator onApply={(tradeId, total) => setLab(current => ({ ...current, tradeId, estimate: { tradeId, total } }))} notify={notify} />
+      <div className="mt-8">
+        <FlowAIChat />
       </div>
     </section>
 
@@ -262,5 +274,10 @@ export function LandingPage() {
         <Link className="sf-primary-link" to="/register">Join as a Provider<ArrowUpRight size={18} /></Link>
       </div>
     </section>
+
+    {/* Toasts */}
+    <div className="sf-toasts" aria-live="polite">
+      {toasts.map(toast => <p key={toast.id} className="sf-toast"><CheckCircle2 size={16} aria-hidden="true" />{toast.text}</p>)}
+    </div>
   </>
 }
