@@ -388,6 +388,7 @@ function SettingsForm({ provider, onSaved }: { provider: Provider; onSaved: () =
   const [description, setDescription] = useState(provider.description ?? '')
   const [phone, setPhone] = useState(provider.phone ?? '')
   const [address, setAddress] = useState(provider.address ?? '')
+  const [accepting, setAccepting] = useState(provider.accepting_requests ?? false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -396,7 +397,7 @@ function SettingsForm({ provider, onSaved }: { provider: Provider; onSaved: () =
     e.preventDefault(); if (pending) return
     setPending(true); setError(''); setSaved(false)
     try {
-      await providerService.updateProfile({ name, description, phone, address })
+      await providerService.updateProfile({ name, description, phone, address, accepting_requests: accepting })
       setSaved(true); onSaved()
     } catch (c) { setError((c as Error).message) } finally { setPending(false) }
   }
@@ -407,6 +408,10 @@ function SettingsForm({ provider, onSaved }: { provider: Provider; onSaved: () =
       <TextAreaField label="Description" value={description} onChange={e => setDescription(e.target.value)} />
       <TextField label="Phone" value={phone} onChange={e => setPhone(e.target.value)} />
       <TextField label="Address" value={address} onChange={e => setAddress(e.target.value)} />
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={accepting} onChange={e => setAccepting(e.target.checked)} />
+        Accepting new service requests
+      </label>
       {error && <Notice error>{error}</Notice>}
       {saved && <Notice>Profile saved.</Notice>}
       <ActionButton type="submit" variant="stamp" disabled={pending}>{pending ? 'Saving…' : 'Save profile'}</ActionButton>

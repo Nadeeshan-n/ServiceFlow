@@ -22,6 +22,7 @@ class ProviderProfileUpdate(BaseModel):
     email: EmailStr | None = None
     phone: str | None = Field(default=None, min_length=7, max_length=30)
     address: str | None = None
+    accepting_requests: bool | None = None
 
     @field_validator("name", "phone")
     @classmethod
