@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSession } from "./app/session";
+import { providerService } from "./lib/provider-service";
 import MyBusiness from "./features/manager/MyBusiness";
 import Pipeline from "./features/manager/Pipeline";
 import AdminDashboard from "./features/admin/Dashboard";
@@ -66,10 +67,20 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
     return current;
   }, items[0]?.href ?? "/");
 
+  const [companyName, setCompanyName] = useState("");
+  useEffect(() => {
+    if (role !== "manager") return;
+    let active = true;
+    providerService.getProfile()
+      .then(profile => { if (active) setCompanyName(profile.name); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [role]);
+
   const subtitleMap: Record<Role, string> = {
-    manager: "Manager · BrightFix",
-    employee: "Employee · BrightFix",
-    admin: "Admin · BrightFix",
+    manager: companyName ? `Manager · ${companyName}` : "Manager",
+    employee: "Employee",
+    admin: "Admin",
   };
 
   return (

@@ -16,9 +16,10 @@ export default function QuoteBuilder() {
 
   const request = useResource(() => providerService.getRequest(id), [id])
   const quotations = useResource(() => providerService.listQuotations(id), [id])
+  const hasLiveQuotation = quotations.data?.some(q => q.status !== 'DRAFT')
 
   return <>
-    <PageHeader title="Build quotation" description={`For request #${id}`}>
+    <PageHeader title={hasLiveQuotation ? "View quotation" : "Build quotation"} description={`For request #${id}`}>
       <Link to="/manager/requests" className="sf-link">← Back to requests</Link>
     </PageHeader>
 
@@ -76,7 +77,7 @@ function SentQuotation({ quotation }: { quotation: QuotationRow }) {
       <strong className="sf-tabular text-lg">LKR {Number(quotation.total_amount).toFixed(2)}</strong>
     </div>
     <p className="text-sm text-text-secondary">
-      Valid until {new Date(quotation.valid_until).toLocaleString('en-GB')}
+      Valid until {new Date(quotation.valid_until).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
     </p>
     {quotation.note && <p className="text-sm">{quotation.note}</p>}
     <Notice>

@@ -56,7 +56,7 @@ export default function ManagerSchedule() {
                     {j.schedule_date && ` · ${j.schedule_date} ${j.schedule_time?.slice(0, 5) ?? ''}`}
                   </p>
                   <p className="text-xs text-text-secondary">
-                    {j.assigned_user_id ? `Assigned to employee #${j.assigned_user_id}` : 'Not assigned'}
+                    {j.assigned_user_id ? `Assigned to ${employees.data?.find(e => e.id === j.assigned_user_id)?.name ?? `employee #${j.assigned_user_id}`}` : 'Not assigned'}
                   </p>
                 </div>
                 <ActionButton variant="stub" size="small" onClick={() => setOpenJobId(j.id)}>Manage</ActionButton>
@@ -111,6 +111,10 @@ function JobScheduler({ jobId, employees, onChanged, onClose }: {
   return <Resource {...job} retry={job.reload}>
     {job.data && (() => {
       const isReassign = !!job.data.assigned_user_id
+      const assignedUserId = job.data.assigned_user_id
+      const assignedName = assignedUserId
+        ? employees.find(e => e.id === assignedUserId)?.name ?? `employee #${assignedUserId}`
+        : null
       const canAssign = employees.length > 0 &&
         ['JOB_CREATED', 'SCHEDULE_PROPOSED'].includes(job.data.status)
       return <>
@@ -125,7 +129,7 @@ function JobScheduler({ jobId, employees, onChanged, onClose }: {
             </p>
           )}
           <p className="text-sm text-text-secondary">
-            {job.data.assigned_user_id ? `Assigned to employee #${job.data.assigned_user_id}` : 'No employee assigned'}
+            {assignedName ? `Assigned to ${assignedName}` : 'No employee assigned'}
           </p>
         </div>
 

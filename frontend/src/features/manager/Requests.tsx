@@ -5,7 +5,7 @@ import {
 } from '../../components'
 import { Notice, PageHeader, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
 import { providerService } from '../../lib/provider-service'
-import type { RequestAttachmentRow, RequestMessage } from '../../types/provider'
+import type { QuotationRow, RequestAttachmentRow, RequestMessage } from '../../types/provider'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -56,10 +56,29 @@ export default function RequestInbox() {
   </>
 }
 
+function QuotationOutcome({ quotations }: { quotations?: QuotationRow[] }) {
+  // The request status stays QUOTATION_SENT even after the client decides,
+  // so the notice reflects the latest quotation's real state instead.
+  const latest = quotations
+    ?.filter(q => q.status !== 'DRAFT')
+    .sort((a, b) => b.id - a.id)[0]
+  if (!latest || latest.status === 'SENT') {
+    return <Notice>Quotation sent — waiting for client approval.</Notice>
+  }
+  if (latest.status === 'APPROVED') {
+    return <Notice>{latest.job_id
+      ? `Quotation approved by the client — job #${latest.job_id} has been created.`
+      : 'Quotation approved by the client.'}</Notice>
+  }
+  if (latest.status === 'DECLINED') return <Notice>The client declined the quotation.</Notice>
+  return <Notice>The quotation has expired.</Notice>
+}
+
 function RequestDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const req = useResource(() => providerService.getRequest(id), [id])
   const msgs = useResource(() => providerService.listMessages(id), [id])
   const atts = useResource(() => providerService.listRequestAttachments(id).catch(() => [] as RequestAttachmentRow[]), [id])
+  const quotes = useResource(() => providerService.listQuotations(id).catch(() => [] as QuotationRow[]), [id])
   const [action, setAction] = useState<'review' | 'info' | 'reject' | null>(null)
   const [text, setText] = useState('')
   const [pending, setPending] = useState(false)
@@ -110,7 +129,7 @@ function RequestDetail({ id, onClose }: { id: number; onClose: () => void }) {
           <ActionButton variant="void" onClick={() => { setAction('reject'); setText('') }}>Reject</ActionButton>
           <Link to={`/manager/quotations/${id}`} className="sf-action inline-flex items-center justify-center gap-2 rounded-docket sf-stamp min-h-11 px-5 text-sm font-semibold">Create quotation</Link>
         </>}
-        {req.data.status === 'QUOTATION_SENT' && <Notice>Quotation sent — waiting for client approval.</Notice>}
+        {req.data.status === 'QUOTATION_SENT' && <QuotationOutcome quotations={quotes.data} />}
       </div>
 
       {action && <SurfaceCard className="mt-4 space-y-3 p-4">
