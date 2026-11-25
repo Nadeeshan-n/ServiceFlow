@@ -3,11 +3,12 @@ import { Sparkles, X, Send, Paperclip, FileText, Check, Lock } from 'lucide-reac
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../app/session'
 import { api, apiUpload, ApiError } from '../lib/api'
+import { formatCitation, type ApiCitation } from '../lib/citations'
 
 type Message = {
   role: 'user' | 'assistant' | 'system'
   content: string
-  citations?: Array<{ source: string; page: number }>
+  citations?: ApiCitation[]
   error?: boolean
   quickActions?: Array<{ label: string; action: 'business' | 'policy' | 'upload' }>
 }
@@ -178,7 +179,7 @@ export function FlowAIBubble() {
       const response = await api<{
         status?: string
         answer?: string
-        citations?: Array<{ source: string; page: number }>
+        citations?: ApiCitation[]
       }>(endpoint, 'POST', { question }, { timeout: 120000 })
 
       const answer = response.status === 'insufficient_evidence'
@@ -365,6 +366,14 @@ export function FlowAIBubble() {
                 )
               }
               const isUser = m.role === 'user'
+              // The API's citation shapes differ per endpoint (ask-docs:
+              // document_name/page_number; ask-data: tool/total_count) and
+              // neither has `source`/`page` — rendering those fields directly
+              // produced blank "📄 · p." chips. Normalise first, and render
+              // nothing at all when a citation has nothing to show.
+              const displayCitations = (m.citations ?? [])
+                .map(c => ({ text: formatCitation(c), isData: Boolean(c.tool) }))
+                .filter((c): c is { text: string; isData: boolean } => c.text !== null)
               return (
                 <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                   <div
@@ -377,11 +386,11 @@ export function FlowAIBubble() {
                     }`}
                   >
                     <p className="whitespace-pre-wrap">{m.content}</p>
-                    {m.citations && m.citations.length > 0 && (
+                    {displayCitations.length > 0 && (
                       <div className={`mt-2 space-y-1 pt-2 ${isUser ? 'border-t border-white/20' : 'border-t border-line'}`}>
-                        {m.citations.map((c, j) => (
+                        {displayCitations.map((c, j) => (
                           <p key={j} className="text-[11px] opacity-85">
-                            📄 {c.source} · p.{c.page}
+                            {c.isData ? '📊' : '📄'} {c.text}
                           </p>
                         ))}
                       </div>

@@ -5,6 +5,7 @@ import {
 } from '../../components'
 import { Notice, PageHeader } from '../../components/client-shared'
 import { api, ApiError } from '../../lib/api'
+import { type ApiCitation } from '../../lib/citations'
 import { mockPolicyStatus, type PolicyStatus, type PolicyState } from '../../mocks/data'
 import { Upload } from 'lucide-react'
 
@@ -18,7 +19,7 @@ const policyStatus = (s: PolicyState): 'awaiting' | 'scheduled' | 'approved' | '
 type AskResponse = {
   status?: string
   answer?: string
-  citations?: Array<{ source: string; page: number }>
+  citations?: ApiCitation[]
 }
 
 const askTabs = [

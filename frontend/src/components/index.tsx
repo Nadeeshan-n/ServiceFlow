@@ -7,6 +7,8 @@ import {
   UserRoundCheck, Users, X, type LucideIcon
 } from 'lucide-react'
 
+import { formatCitation, type ApiCitation } from '../lib/citations'
+
 const cx = (...classes: Array<string | false | undefined>) => classes.filter(Boolean).join(' ')
 const iconMap = { dashboard: LayoutDashboard, browse: Search, categories: Grid2X2, requests: ClipboardList,
   quotations: FileText, jobs: BriefcaseBusiness, schedule: CalendarDays, invoices: Receipt,
@@ -236,9 +238,16 @@ export function FlowAIPanel({ question, answer, source, page, citations, loading
   answer?:string;
   source?:string;
   page?:number;
-  citations?: Array<{ source: string; page: number }>;
+  citations?: ApiCitation[];
   loading?:boolean;
 }) {
+  // Same shape mismatch as the bubble: the API returns document_name /
+  // page_number (ask-docs) or tool / total_count (ask-data), never
+  // `source` / `page`. Normalise first; render nothing when there is
+  // nothing to show.
+  const displayCitations = (citations ?? [])
+    .map(c => formatCitation(c))
+    .filter((c): c is string => c !== null)
   return <SurfaceCard className="max-w-xl p-5">
     <h3 className="sf-display flex items-center gap-2 font-bold">
       <Sparkles className="text-signal-text" size={18} aria-hidden="true"/>Flow AI
@@ -254,16 +263,16 @@ export function FlowAIPanel({ question, answer, source, page, citations, loading
           <Sparkles className="shrink-0 text-signal-text" size={17} aria-hidden="true"/>
           <p>{answer ?? 'The uploaded policy document does not provide enough evidence to answer this question.'}</p>
         </div>
-        {citations && citations.length > 0 && (
+        {displayCitations.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {citations.map((c, i) => (
+            {displayCitations.map((text, i) => (
               <div key={i} className="sf-mono inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary">
-                <FileSearch size={15} aria-hidden="true"/>Source: {c.source} · Page {c.page}
+                <FileSearch size={15} aria-hidden="true"/>{text}
               </div>
             ))}
           </div>
         )}
-        {(!citations || citations.length === 0) && answer && source && page != null && (
+        {displayCitations.length === 0 && answer && source && page != null && (
           <div className="sf-mono mt-4 inline-flex items-center gap-2 rounded-docket border border-border px-2 py-1 text-[11px] text-text-secondary">
             <FileSearch size={15} aria-hidden="true"/>Source: {source} · Page {page}
           </div>
