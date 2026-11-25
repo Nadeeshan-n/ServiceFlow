@@ -86,6 +86,7 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
     event.preventDefault()
     if (pending || reading) return
     if (!!latitude !== !!longitude) { setError('Provide both latitude and longitude.'); return }
+    if ((demoMode || liveApiMode) && (!latitude || !longitude)) { setError('Add your location — paste a Google Maps link or use your current location.'); return }
     setPending(true)
     setError('')
     setFields({})
@@ -126,11 +127,11 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
         </div>
         <fieldset className="space-y-4 border-t border-line pt-5" disabled={pending}>
           <legend className="font-semibold">Service location</legend>
-          <p className="text-sm text-text-secondary">Use your current location or enter coordinates for the service address. Check the address before submitting.</p>
+          <p className="text-sm text-text-secondary">Paste a Google Maps link or use your current location — the coordinates fill in automatically and can't be edited. Check the map before submitting.</p>
           <TextField label="Paste a Google Maps link (optional)" type="text" placeholder="https://www.google.com/maps/place/…/@6.9271,79.8612,…" value={mapLink} onChange={event => applyMapLink(event.target.value)} error={linkError || undefined} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label="Latitude" type="number" step="any" min={-90} max={90} required={demoMode || liveApiMode} value={latitude} onChange={event => setLatitude(event.target.value)} />
-            <TextField label="Longitude" type="number" step="any" min={-180} max={180} required={demoMode || liveApiMode} value={longitude} onChange={event => setLongitude(event.target.value)} />
+            <TextField label="Latitude" type="number" step="any" min={-90} max={90} required={demoMode || liveApiMode} readOnly value={latitude} hint="Set from your link or current location." />
+            <TextField label="Longitude" type="number" step="any" min={-180} max={180} required={demoMode || liveApiMode} readOnly value={longitude} />
           </div>
           <ActionButton disabled={locating} onClick={locate}>{locating ? 'Finding location…' : 'Use my current location'}</ActionButton>
           {latitude.trim() !== '' && longitude.trim() !== '' && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180 && <LocationMap latitude={Number(latitude)} longitude={Number(longitude)} />}
