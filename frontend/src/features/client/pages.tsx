@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ActionButton, Modal, SurfaceCard, TextAreaField } from '../../components'
+import { LocationMap } from '../../components/LocationMap'
 import { dateTime, EmptyRecords, money, Notice, PageHeader, RecordStatus, Resource, statusLabel, useResource } from '../../components/client-shared'
 import { useSession } from '../../app/session'
 import { clientService } from '../../lib/client-service'
@@ -79,7 +80,7 @@ function RequestAttachments({ request }: { request: RequestRecord }) {
   return <SurfaceCard className="max-w-3xl space-y-4 p-6">
     <h2 className="sf-display text-xl font-semibold">Request location and attachments</h2>
     {request.preferred_time && <p>Preferred time {request.preferred_time} · Asia/Colombo</p>}
-    {request.latitude !== undefined && <p>Coordinates {request.latitude}, {request.longitude}</p>}
+    {request.latitude !== undefined && request.longitude !== undefined && <LocationMap latitude={request.latitude} longitude={request.longitude} />}
     {(request.attachments || []).length > 0 && <ul className="space-y-2">{request.attachments!.map(attachment => <li key={attachment.id}><button type="button" className="sf-link" onClick={() => downloadFile(`/requests/${request.id}/attachments/${attachment.id}`, attachment.file_name)}>{attachment.file_name}</button> <span className="text-sm text-text-secondary">· {attachment.content_type} · {attachment.created_at.slice(0, 10)}</span></li>)}</ul>}
     <div className="grid grid-cols-2 gap-4">{request.photos?.map((photo, index) => (
       <figure key={index}><img className="w-full rounded-docket" src={photo.data_url} alt={`Request attachment ${index + 1}`} /><figcaption className="break-all text-xs">{photo.name}</figcaption></figure>

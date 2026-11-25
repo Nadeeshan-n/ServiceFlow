@@ -4,6 +4,7 @@ import {
   ActionButton, EmptyState, Modal, SelectField, SurfaceCard, TextAreaField,
 } from '../../components'
 import { Notice, PageHeader, RecordStatus, Resource, dateTime, useResource } from '../../components/client-shared'
+import { LocationMap } from '../../components/LocationMap'
 import { providerService } from '../../lib/provider-service'
 import type { QuotationRow, RequestAttachmentRow, RequestMessage } from '../../types/provider'
 
@@ -118,6 +119,7 @@ function RequestDetail({ id, onClose }: { id: number; onClose: () => void }) {
           {req.data.preferred_time && <div><span className="text-text-secondary">Preferred time:</span> {req.data.preferred_time.slice(0, 5)}</div>}
           <div className="sm:col-span-2"><span className="text-text-secondary">Address:</span> {req.data.address}</div>
         </div>
+        <LocationMap latitude={req.data.latitude} longitude={req.data.longitude} />
         {req.data.rejection_reason && <Notice error>Rejected: {req.data.rejection_reason}</Notice>}
         {req.data.cancellation_reason && <Notice>Cancelled: {req.data.cancellation_reason}</Notice>}
       </div>

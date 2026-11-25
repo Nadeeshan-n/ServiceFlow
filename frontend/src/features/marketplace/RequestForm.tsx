@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ActionButton, SelectField, SurfaceCard, TextAreaField, TextField } from '../../components'
 import { money, Notice, Resource, today, useResource } from '../../components/client-shared'
+import { LocationMap, parseLocationInput } from '../../components/LocationMap'
 import { clientService } from '../../lib/client-service'
 import { ApiError, demoMode, liveApiMode } from '../../lib/api'
 import type { RequestInput } from '../../types/client'
@@ -31,6 +32,21 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
   const [time, setTime] = useState('')
   const [latitude, setLatitude] = useState('')
   const [longitude, setLongitude] = useState('')
+  const [mapLink, setMapLink] = useState('')
+  const [linkError, setLinkError] = useState('')
+
+  function applyMapLink(value: string) {
+    setMapLink(value)
+    if (!value.trim()) { setLinkError(''); return }
+    const parsed = parseLocationInput(value)
+    if (parsed) {
+      setLatitude(String(parsed.latitude))
+      setLongitude(String(parsed.longitude))
+      setLinkError('')
+    } else {
+      setLinkError('Could not read coordinates from that link. Paste a full Google Maps link (the long one from the address bar), or use your current location.')
+    }
+  }
   const [photos, setPhotos] = useState<Photo[]>([])
   const [pending, setPending] = useState(false)
   const [reading, setReading] = useState(false)
@@ -111,11 +127,13 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
         <fieldset className="space-y-4 border-t border-line pt-5" disabled={pending}>
           <legend className="font-semibold">Service location</legend>
           <p className="text-sm text-text-secondary">Use your current location or enter coordinates for the service address. Check the address before submitting.</p>
+          <TextField label="Paste a Google Maps link (optional)" type="text" placeholder="https://www.google.com/maps/place/…/@6.9271,79.8612,…" value={mapLink} onChange={event => applyMapLink(event.target.value)} error={linkError || undefined} />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Latitude" type="number" step="any" min={-90} max={90} required={demoMode || liveApiMode} value={latitude} onChange={event => setLatitude(event.target.value)} />
             <TextField label="Longitude" type="number" step="any" min={-180} max={180} required={demoMode || liveApiMode} value={longitude} onChange={event => setLongitude(event.target.value)} />
           </div>
           <ActionButton disabled={locating} onClick={locate}>{locating ? 'Finding location…' : 'Use my current location'}</ActionButton>
+          {latitude.trim() !== '' && longitude.trim() !== '' && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180 && <LocationMap latitude={Number(latitude)} longitude={Number(longitude)} />}
         </fieldset>
         <fieldset className="space-y-3 border-t border-line pt-5" disabled={liveApiMode || !demoMode || pending || reading}>
           <legend className="font-semibold">Optional photos</legend>
