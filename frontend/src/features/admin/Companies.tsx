@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  ActionButton, EmptyState, SelectField, SurfaceCard,
+  ActionButton, EmptyState, Modal, SelectField, SurfaceCard,
 } from '../../components'
 import { Notice, PageHeader, Resource, dateTime, useResource } from '../../components/client-shared'
 import { providerService } from '../../lib/provider-service'
@@ -20,6 +20,35 @@ const TYPE_FILTERS = [
   { value: 'COMPANY', label: 'Company' },
 ]
 
+type ProviderAction = 'approve' | 'reject' | 'suspend' | 'reactivate'
+
+const ACTION_COPY: Record<ProviderAction, { title: string; body: (name: string) => string; confirm: string; variant: 'stamp' | 'void' }> = {
+  approve: {
+    title: 'Approve this provider?',
+    body: name => `“${name}” will be approved and can start receiving service requests.`,
+    confirm: 'Approve provider',
+    variant: 'stamp',
+  },
+  reject: {
+    title: 'Reject this provider?',
+    body: name => `“${name}” will be rejected and will not be able to sign in or receive requests. You can approve them later if this changes.`,
+    confirm: 'Reject provider',
+    variant: 'void',
+  },
+  suspend: {
+    title: 'Suspend this provider?',
+    body: name => `“${name}” will be suspended and hidden from the client directory until they are reactivated.`,
+    confirm: 'Suspend provider',
+    variant: 'void',
+  },
+  reactivate: {
+    title: 'Reactivate this provider?',
+    body: name => `“${name}” will be reactivated and visible in the client directory again.`,
+    confirm: 'Reactivate provider',
+    variant: 'stamp',
+  },
+}
+
 export default function AdminCompanies() {
   const [status, setStatus] = useState('PENDING')
   const [type, setType] = useState('')
@@ -30,22 +59,28 @@ export default function AdminCompanies() {
     }),
     [status, type],
   )
-  const [busy, setBusy] = useState<number | null>(null)
+  const [confirming, setConfirming] = useState<{ provider: AdminProviderRow; action: ProviderAction } | null>(null)
+  const [acting, setActing] = useState(false)
+  const [dialogError, setDialogError] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  async function act(id: number, action: 'approve' | 'reject' | 'suspend' | 'reactivate') {
-    setBusy(id); setError(''); setSuccess('')
+  async function confirmAction() {
+    if (!confirming) return
+    const { provider, action } = confirming
+    setActing(true); setDialogError('')
     try {
       const fn =
         action === 'approve' ? providerService.adminApproveProvider :
         action === 'reject' ? providerService.adminRejectProvider :
         action === 'reactivate' ? providerService.adminReactivateProvider :
         providerService.adminSuspendProvider
-      const res = await fn(id)
-      setSuccess(res.message || `Provider #${id} ${action}d.`)
+      const res = await fn(provider.id)
+      setSuccess(res.message || `Provider #${provider.id} ${action}d.`)
+      setError('')
+      setConfirming(null)
       providers.reload()
-    } catch (c) { setError((c as Error).message) } finally { setBusy(null) }
+    } catch (c) { setDialogError((c as Error).message) } finally { setActing(false) }
   }
 
   return <>
@@ -70,16 +105,28 @@ export default function AdminCompanies() {
             description={status === 'PENDING' ? 'No providers awaiting verification.' : 'No providers match these filters.'}
           />
         : <div className="space-y-2">{providers.data?.items.map(p => (
-            <ProviderCard key={p.id} provider={p} busy={busy === p.id} onAction={act} />
+            <ProviderCard key={p.id} provider={p} onAction={(provider, action) => { setSuccess(''); setDialogError(''); setConfirming({ provider, action }) }} />
           ))}</div>}
     </Resource>
+
+    <Modal open={!!confirming} title={confirming ? ACTION_COPY[confirming.action].title : ''} onClose={() => { if (!acting) { setConfirming(null); setDialogError('') } }}>
+      {confirming && <div className="space-y-5">
+        <p className="text-sm">{ACTION_COPY[confirming.action].body(confirming.provider.name)}</p>
+        {dialogError && <Notice error>{dialogError}</Notice>}
+        <div className="flex flex-wrap justify-end gap-3">
+          <ActionButton variant="stub" onClick={() => { setConfirming(null); setDialogError('') }} disabled={acting}>Cancel</ActionButton>
+          <ActionButton variant={ACTION_COPY[confirming.action].variant} onClick={() => void confirmAction()} disabled={acting}>
+            {acting ? 'Working…' : ACTION_COPY[confirming.action].confirm}
+          </ActionButton>
+        </div>
+      </div>}
+    </Modal>
   </>
 }
 
-function ProviderCard({ provider, busy, onAction }: {
+function ProviderCard({ provider, onAction }: {
   provider: AdminProviderRow
-  busy: boolean
-  onAction: (id: number, action: 'approve' | 'reject' | 'suspend' | 'reactivate') => void
+  onAction: (provider: AdminProviderRow, action: ProviderAction) => void
 }) {
   const s = provider.verification_status
   return <SurfaceCard className="space-y-3 p-4">
@@ -104,22 +151,22 @@ function ProviderCard({ provider, busy, onAction }: {
       <p className="text-xs text-text-secondary">Registered {dateTime(provider.created_at)}</p>
       <div className="flex flex-wrap gap-2">
         {s !== 'APPROVED' && s !== 'SUSPENDED' && (
-          <ActionButton variant="stamp" size="small" onClick={() => onAction(provider.id, 'approve')} disabled={busy}>
+          <ActionButton variant="stamp" size="small" onClick={() => onAction(provider, 'approve')}>
             Approve
           </ActionButton>
         )}
         {s !== 'REJECTED' && s !== 'SUSPENDED' && (
-          <ActionButton variant="void" size="small" onClick={() => onAction(provider.id, 'reject')} disabled={busy}>
+          <ActionButton variant="void" size="small" onClick={() => onAction(provider, 'reject')}>
             Reject
           </ActionButton>
         )}
         {s === 'SUSPENDED' && (
-          <ActionButton variant="stamp" size="small" onClick={() => onAction(provider.id, 'reactivate')} disabled={busy}>
+          <ActionButton variant="stamp" size="small" onClick={() => onAction(provider, 'reactivate')}>
             Reactivate
           </ActionButton>
         )}
         {s === 'APPROVED' && (
-          <ActionButton variant="void" size="small" onClick={() => onAction(provider.id, 'suspend')} disabled={busy}>
+          <ActionButton variant="void" size="small" onClick={() => onAction(provider, 'suspend')}>
             Suspend
           </ActionButton>
         )}
