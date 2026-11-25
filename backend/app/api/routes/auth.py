@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.core.security import hash_password
-from app.schemas.auth import AuthMeResponse, ChangePasswordRequest, RegisterRequest, RegisterResponse
+from app.schemas.auth import AuthMeResponse, ChangePasswordRequest, RegisterRequest, RegisterResponse, UpdateProfileRequest
 from app.core.security import verify_password, create_access_token
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.core.dependencies import get_current_user
@@ -219,15 +219,11 @@ def login(
 
     return TokenResponse(access_token=token)
 
-@router.get("/me", response_model=AuthMeResponse)
-def get_my_account(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def _me_payload(user: User, db: Session) -> dict:
     company_status = None
-    if current_user.provider_id is not None:
+    if user.provider_id is not None:
         provider = db.scalar(
-            select(Provider).where(Provider.id == current_user.provider_id)
+            select(Provider).where(Provider.id == user.provider_id)
         )
         if provider is not None:
             # This is the provider's admin approval state. The field name
@@ -235,15 +231,47 @@ def get_my_account(
             company_status = provider.verification_status
 
     return {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "role": current_user.role,
-        "status": current_user.status,
-        "email_verified": current_user.email_verified_at is not None,
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "phone": user.phone,
+        "role": user.role,
+        "status": user.status,
+        "email_verified": user.email_verified_at is not None,
         "company_status": company_status,
-        "must_change_password": current_user.must_change_password,
+        "must_change_password": user.must_change_password,
     }
+
+
+@router.get("/me", response_model=AuthMeResponse)
+def get_my_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return _me_payload(current_user, db)
+
+
+@router.patch("/me", response_model=AuthMeResponse)
+def update_my_profile(
+    data: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = db.scalar(
+        select(User)
+        .where(User.id == current_user.id, User.status == "ACTIVE")
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+    if user is None:
+        raise HTTPException(status_code=403, detail="Account is not active")
+
+    user.name = data.name.strip()
+    user.phone = data.phone.strip()
+    db.commit()
+    db.refresh(user)
+    return _me_payload(user, db)
 @router.get("/admin-test")
 def admin_test(
     current_user: User = Depends(require_roles("SYSTEM_ADMIN")),

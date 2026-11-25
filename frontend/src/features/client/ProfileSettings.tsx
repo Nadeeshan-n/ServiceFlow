@@ -55,7 +55,10 @@ function ProfileForm({ initial }: { initial: { name: string; email: string; phon
         setCurrentPassword('')
         setPassword('')
         setConfirm('')
-        setMessage('Your sample password was updated.')
+        setMessage(demoMode && !liveApiMode ? 'Your sample password was updated.' : 'Your password was updated.')
+      } else if (liveApiMode) {
+        signIn(await clientService.updateProfile(name.trim(), phone.trim()))
+        setMessage('Your profile was updated.')
       } else if (!liveApiMode) {
         const user = demoAccount.updateProfile(name.trim(), phone.trim())
         signIn({ access_token: '', user })
@@ -65,15 +68,15 @@ function ProfileForm({ initial }: { initial: { name: string; email: string; phon
     finally { setPending(false) }
   }
   return <div className="max-w-3xl space-y-5">
-    {liveApiMode ? <Notice>Your account is connected to the shared API. Client profile editing needs a backend profile-update endpoint.</Notice> : demoMode && <Notice>Profile changes apply to this sample session and reset on refresh.</Notice>}
+    {!liveApiMode && demoMode && <Notice>Profile changes apply to this sample session and reset on refresh.</Notice>}
     <SurfaceCard className="p-6">
       <form className="space-y-5" onSubmit={event => void submit(event, false)}>
         <h2 className="sf-display text-xl font-semibold">Contact details</h2>
         {liveApiMode && user?.email_verified !== undefined && <p className="text-sm text-text-secondary">Email {user.email_verified ? 'verified' : 'not verified'}{user.company_status ? ` · Company ${user.company_status.toLowerCase()}` : ''}</p>}
-        <TextField label="Full name" required maxLength={100} disabled={liveApiMode} value={name} onChange={event => setName(event.target.value)} />
+        <TextField label="Full name" required maxLength={100} value={name} onChange={event => setName(event.target.value)} />
         <TextField label="Email address" disabled value={initial.email} hint="Email changes require a new verification flow." />
-        <TextField label="Phone number" type="tel" required minLength={7} maxLength={30} disabled={liveApiMode} value={phone} onChange={event => setPhone(event.target.value)} />
-        <ActionButton variant="stamp" type="submit" disabled={liveApiMode || pending || !name.trim() || !phone.trim()}>Save profile</ActionButton>
+        <TextField label="Phone number" type="tel" required minLength={7} maxLength={30} value={phone} onChange={event => setPhone(event.target.value)} />
+        <ActionButton variant="stamp" type="submit" disabled={pending || !name.trim() || !phone.trim()}>Save profile</ActionButton>
       </form>
     </SurfaceCard>
     <SurfaceCard className="p-6">

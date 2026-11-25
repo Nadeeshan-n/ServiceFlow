@@ -84,7 +84,7 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="flex min-h-screen flex-col bg-paper md:flex-row">
       <AppSidebar
         items={items}
         activeHref={activeHref}

@@ -17,7 +17,7 @@ const sortOptions: { key: SortKey; label: string }[] = [
 
 export function startingPrice(company: Company): number | null {
   const prices = company.offerings.filter(offer => offer.active).map(offer => offer.starting_price)
-  return prices.length ? Math.min(...prices) : null
+  return prices.length ? Math.min(...prices) : (company.starting_price ?? null)
 }
 
 type Props = {

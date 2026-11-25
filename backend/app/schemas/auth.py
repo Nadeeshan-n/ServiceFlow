@@ -69,9 +69,15 @@ class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
 
+class UpdateProfileRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=150)
+    phone: str = Field(min_length=7, max_length=30)
+
+
 class AuthMeResponse(RegisterResponse):
     """Authenticated account details used by the frontend session bootstrap."""
     email_verified: bool
+    phone: str | None = None
     # Provider verification status; null for client/system-admin accounts.
     # Kept under company_status for the existing frontend contract.
     company_status: str | None = None

@@ -1,9 +1,9 @@
 import { demoAccount, requireDemo } from './demo-account'
-import { api, ApiError, demoMode, liveApiMode, setAccessToken, uploadFile } from './api'
+import { api, ApiError, demoMode, getAccessToken, liveApiMode, setAccessToken, uploadFile } from './api'
 import type { Company, Invoice, Job, PolicyAnswer, Quote, RequestInput, RequestMessage, RequestRecord, Session, User, Role } from '../types/client'
 
 type BackendUser = Omit<User, 'id' | 'role'> & { id: string | number; role: string }
-type ApiProviderSummary = { id: number; name: string; description?: string | null; accepting_requests?: boolean; rating?: number | null; completed_jobs?: number | null; review_count?: number; starting_price?: number | null }
+type ApiProviderSummary = { id: number; name: string; description?: string | null; accepting_requests?: boolean; rating?: number | null; completed_jobs?: number | null; review_count?: number; starting_price?: number | string | null }
 type ApiProviderDetail = ApiProviderSummary & { type?: string; email?: string | null; phone?: string | null; address?: string | null; areas?: unknown[]; review_count?: number; policies?: { id: number; title: string; policy_type: string }[]; services?: { id: number; service_id: number; service_name: string; description?: string | null; starting_price: number }[] }
 type ApiService = { id: number; name: string; category?: string | null }
 type ApiRequest = { id: number; client_id: number; provider_id: number; service_id: number; description: string; preferred_date: string; preferred_time?: string | null; address: string; latitude?: number | null; longitude?: number | null; status: string; attachments?: { id: number; request_id: number; file_name: string; content_type: string; created_at: string }[] }
@@ -31,6 +31,7 @@ function providerSummary(value: ApiProviderSummary): Company {
     id: String(value.id), name: value.name, category: 'Service provider', location: 'Service area available on profile',
     description: value.description || 'This provider has not added a public description yet.', phone: '', email: '',
     offerings: [], completed_jobs: value.completed_jobs ?? 0, rating: value.rating ?? null, review_count: value.review_count ?? 0,
+    starting_price: value.starting_price != null ? Number(value.starting_price) : null,
   }
 }
 
@@ -111,7 +112,7 @@ function toArray<T>(value: unknown): T[] {
 
 async function requestReferences() {
   const [providers, services] = await Promise.all([
-    api<ApiProviderSummary[]>('/providers?provider_type=COMPANY&limit=100'),
+    api<ApiProviderSummary[]>('/providers?limit=100'),
     api<ApiService[]>('/services'),
   ])
   return { providers: new Map(providers.map(provider => [provider.id, provider])), services: new Map(services.map(service => [service.id, service])) }
@@ -160,7 +161,7 @@ function publicCompany(company: Company): Company {
 export const clientService = {
   async companies(): Promise<Company[]> {
     if (liveApiMode) {
-      const records = await api<ApiProviderSummary[]>('/providers?provider_type=COMPANY&limit=100')
+      const records = await api<ApiProviderSummary[]>('/providers?limit=100')
       return records.map(providerSummary)
     }
     if (demoMode) { await wait(); return copy(companies.map(publicCompany)) }
@@ -218,6 +219,10 @@ export const clientService = {
     await wait()
   },
   async me(): Promise<User> { return liveApiMode || !demoMode ? normalizeUser(await api<BackendUser>('/auth/me')) : demoAccount.me() },
+  async updateProfile(name: string, phone: string): Promise<Session> {
+    const user = normalizeUser(await api<BackendUser>('/auth/me', 'PATCH', { name, phone }))
+    return { access_token: getAccessToken() || '', user }
+  },
   async notifications(): Promise<ClientNotification[]> {
     if (liveApiMode || !demoMode) { const list = await api<ApiNotificationList>('/notifications?limit=100'); return list.items.map(item => ({ id: String(item.id), title: item.title, message: item.message, type: item.type, is_read: item.is_read, created_at: item.created_at })) }
     return []

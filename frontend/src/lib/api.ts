@@ -16,6 +16,10 @@ export function setAccessToken(value: string | null) {
   } catch {}
 }
 
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
 export class ApiError extends Error {
   constructor(message: string, public status = 400, public fieldErrors: Record<string, string> = {}){ super(message) }
 }
