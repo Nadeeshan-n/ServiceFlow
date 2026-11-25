@@ -96,7 +96,7 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
         preferred_time: time || undefined,
         latitude: latitude ? Number(latitude) : undefined,
         longitude: longitude ? Number(longitude) : undefined,
-        ...(!liveApiMode ? { photos } : {}),
+        photos,
       }
       const row = await clientService.createRequest(input)
       if (onCreated) onCreated(row.id)
@@ -136,7 +136,7 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
           <ActionButton disabled={locating} onClick={locate}>{locating ? 'Finding location…' : 'Use my current location'}</ActionButton>
           {latitude.trim() !== '' && longitude.trim() !== '' && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180 && <LocationMap latitude={Number(latitude)} longitude={Number(longitude)} />}
         </fieldset>
-        <fieldset className="space-y-3 border-t border-line pt-5" disabled={liveApiMode || !demoMode || pending || reading}>
+        <fieldset className="space-y-3 border-t border-line pt-5" disabled={(!demoMode && !liveApiMode) || pending || reading}>
           <legend className="font-semibold">Optional photos</legend>
           <label className="block text-sm" htmlFor="request-photos">Attach up to 3 photos · JPEG, PNG or WebP · 2 MB each</label>
           <input id="request-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event => { void selectPhotos(event.target.files); event.target.value = '' }} />
@@ -146,7 +146,6 @@ export function NewRequestPage({ companyId, onCreated, onCancel }: Props = {}) {
             <ActionButton onClick={() => setPhotos(current => current.filter((_, selected) => selected !== index))}>Remove photo {index + 1}</ActionButton>
           </div>)}</div>
         </fieldset>
-        {liveApiMode && <Notice>This API receives the provider, service, description, date, address and coordinates. Photo upload will be available when its endpoint is added.</Notice>}
         {!demoMode && !liveApiMode && <Notice>Preferred time, coordinates and photos await an agreed backend contract. The connected request form currently sends the core request fields.</Notice>}
         {error && <Notice error>{error}</Notice>}
         <div className="flex flex-wrap gap-4">
