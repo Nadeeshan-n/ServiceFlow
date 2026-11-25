@@ -4,6 +4,7 @@ import {
   Tabs, TextAreaField, TextField,
 } from '../../components'
 import { Notice, PageHeader, Resource, useResource } from '../../components/client-shared'
+import { ApiError } from '../../lib/api'
 import { providerService } from '../../lib/provider-service'
 import type {
   CatalogService, PolicyRow, Provider, ProviderOffering,
@@ -273,11 +274,19 @@ function PoliciesTab() {
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
   const [downloading, setDownloading] = useState<number | null>(null)
+  const [confirming, setConfirming] = useState<PolicyRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   async function remove(id: number) {
-    setError('')
+    setError(''); setDeleting(true)
     try { await providerService.deletePolicy(id); policies.reload() }
-    catch (c) { setError((c as Error).message) }
+    catch (c) {
+      // Already gone (e.g. a double submit): the goal is achieved, so just
+      // refresh the list instead of surfacing a "Policy not found" banner.
+      if ((c as ApiError).status === 404) policies.reload()
+      else setError((c as Error).message)
+    }
+    finally { setDeleting(false); setConfirming(null) }
   }
   async function activate(id: number) {
     setError('')
@@ -319,13 +328,22 @@ function PoliciesTab() {
                   {downloading === p.id ? '…' : 'Download'}
                 </ActionButton>
                 {p.status !== 'ACTIVE' && <ActionButton variant="stub" size="small" onClick={() => activate(p.id)}>Activate</ActionButton>}
-                <ActionButton variant="void" size="small" onClick={() => remove(p.id)}>Delete</ActionButton>
+                <ActionButton variant="void" size="small" onClick={() => setConfirming(p)}>Delete</ActionButton>
               </div>
             </SurfaceCard>
           ))}</div>}
     </Resource>
     <Modal open={adding} title="Upload policy" onClose={() => setAdding(false)}>
       {adding && <UploadPolicy onDone={() => { setAdding(false); policies.reload() }} onCancel={() => setAdding(false)} />}
+    </Modal>
+    <Modal open={!!confirming} title="Delete this policy?" onClose={() => setConfirming(null)}>
+      {confirming && <div className="space-y-4">
+        <p className="text-sm">“{confirming.title}” will be permanently deleted.{confirming.visibility === 'PUBLIC' ? ' It is a public policy, so Flow AI will stop answering questions from it and clients will no longer see it on your profile.' : ' It is a private policy, so Flow AI is not using it.'}</p>
+        <div className="flex flex-wrap gap-2">
+          <ActionButton variant="void" onClick={() => remove(confirming.id)} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete policy'}</ActionButton>
+          <ActionButton variant="stub" onClick={() => setConfirming(null)}>Cancel</ActionButton>
+        </div>
+      </div>}
     </Modal>
   </>
 }
