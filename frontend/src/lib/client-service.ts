@@ -64,18 +64,18 @@ function requestRecord(value: ApiRequest, providers: Map<number, ApiProviderSumm
 function normalizeJob(value: ApiJob, record?: RequestRecord): Job {
   const status = value.schedule_status === 'PENDING' && value.status === 'JOB_CREATED' ? 'SCHEDULE_PROPOSED' : value.schedule_status === 'CONFIRMED' && value.status === 'JOB_CREATED' ? 'SCHEDULE_CONFIRMED' : value.status as Job['status']
   return {
-    id: String(value.id), request_id: String(value.request_id),
+    id: String(value.id), request_id: String(value.request_id), quotation_id: String(value.quotation_id),
     company_name: record?.company_name || 'Service provider', service: record?.service || 'Requested service',
     status, appointment: value.schedule_date && value.schedule_time ? `${value.schedule_date}T${value.schedule_time}+05:30` : undefined,
     address: record?.address || '',
   }
 }
 
-function normalizeInvoice(value: ApiInvoice, job?: Job): Invoice {
+function normalizeInvoice(value: ApiInvoice, job?: Job, items: Invoice['items'] = []): Invoice {
   return {
     id: String(value.id), job_id: String(value.job_id),
     company_name: job?.company_name || 'Service provider', service: job?.service || 'Requested service',
-    total: Number(value.total_amount), status: value.payment_status as Invoice['status'], items: [],
+    total: Number(value.total_amount), status: value.payment_status as Invoice['status'], items,
     invoice_number: value.invoice_number, downpayment_amount: Number(value.downpayment_amount), paid_amount: Number(value.paid_amount),
   }
 }
@@ -358,9 +358,19 @@ export const clientService = {
     if (liveApiMode || !demoMode) {
       const value = await api<ApiInvoice>(`/invoices/${encodeURIComponent(id)}`)
       const job = await clientService.job(String(value.job_id)).catch(() => undefined)
-      return normalizeInvoice(value, job)
+      const quote = job?.quotation_id ? await clientService.quote(job.quotation_id).catch(() => undefined) : undefined
+      return normalizeInvoice(value, job, quote?.items ?? [])
     }
     await wait(); return copy(find(await clientService.invoices(), id))
+  },
+  async downloadInvoicePdf(id: string) {
+    const blob = await apiBlob(`/invoices/${encodeURIComponent(id)}/pdf`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `invoice-${id}.pdf`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   },
   async messages(id: string): Promise<RequestMessage[]> {
     if (liveApiMode || !demoMode) {

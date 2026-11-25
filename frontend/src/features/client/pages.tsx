@@ -5,7 +5,7 @@ import { LocationMap } from '../../components/LocationMap'
 import { dateTime, EmptyRecords, money, Notice, PageHeader, RecordStatus, Resource, statusLabel, useResource } from '../../components/client-shared'
 import { useSession } from '../../app/session'
 import { clientService } from '../../lib/client-service'
-import { downloadFile } from '../../lib/api'
+import { demoMode, downloadFile } from '../../lib/api'
 import { DisputeForm, ReviewForm } from './FeedbackForms'
 import { RequestTimeline } from './RequestTimeline'
 import type { Invoice, Job, Quote, RequestRecord } from '../../types/client'
@@ -72,7 +72,7 @@ export function JobDetailPage({ recordId }: { recordId?: string } = {}) {
 }
 export function InvoiceDetailPage({ recordId }: { recordId?: string } = {}) {
   const params = useParams(); const id = recordId ?? params.id ?? '';  const resource = useResource(() => clientService.invoice(id), [id]); const row = resource.data
-  return <Resource {...resource} retry={resource.reload}>{row && <DetailShell kind="invoices" id={id} title="Your service invoice" company={row.company_name} status={row.status}><SurfaceCard className="max-w-3xl p-6 md:p-8"><div className="mb-5 flex flex-wrap items-start justify-between gap-4"><div><p className="sf-mono text-xs text-text-secondary">INVOICE</p><h2 className="sf-display mt-2 text-xl font-bold">{row.invoice_number || id}</h2><p className="mt-2">{row.service}</p></div><RecordStatus status={row.status} /></div><LineItems items={row.items} total={row.total} />{row.downpayment_amount !== undefined && <p className="mt-5 text-sm text-text-secondary">Downpayment: {money(row.downpayment_amount)} · Paid: {money(row.paid_amount || 0)} · Due: {money(row.total - (row.paid_amount || 0))}</p>}<div className="sf-separator mt-7 pt-5"><Notice>{row.status === 'PAID' ? 'Your company manager has recorded full offline payment.' : 'Payment is arranged offline with your service company. Its manager will update the payment record.'}</Notice></div></SurfaceCard><Link className="sf-link inline-block" to={`/client/jobs/${row.job_id}`}>View completed job →</Link></DetailShell>}</Resource>
+  return <Resource {...resource} retry={resource.reload}>{row && <DetailShell kind="invoices" id={id} title="Your service invoice" company={row.company_name} status={row.status}><SurfaceCard className="max-w-3xl p-6 md:p-8"><div className="mb-5 flex flex-wrap items-start justify-between gap-4"><div><p className="sf-mono text-xs text-text-secondary">INVOICE</p><h2 className="sf-display mt-2 text-xl font-bold">{row.invoice_number || id}</h2><p className="mt-2">{row.service}</p></div><RecordStatus status={row.status} /></div><LineItems items={row.items} total={row.total} />{row.downpayment_amount !== undefined && <p className="mt-5 text-sm text-text-secondary">Downpayment: {money(row.downpayment_amount)} · Paid: {money(row.paid_amount || 0)} · Due: {money(row.total - (row.paid_amount || 0))}</p>}{!demoMode && <div className="mt-5"><ActionButton variant="stub" onClick={() => void clientService.downloadInvoicePdf(row.id)}>Download PDF</ActionButton></div>}<div className="sf-separator mt-7 pt-5"><Notice>{row.status === 'PAID' ? 'Your company manager has recorded full offline payment.' : 'Payment is arranged offline with your service company. Its manager will update the payment record.'}</Notice></div></SurfaceCard><Link className="sf-link inline-block" to={`/client/jobs/${row.job_id}`}>View completed job →</Link></DetailShell>}</Resource>
 }
 
 function RequestAttachments({ request }: { request: RequestRecord }) {
