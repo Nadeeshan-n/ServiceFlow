@@ -421,7 +421,7 @@ def complete_job(db: Session, user: Any, job_id: int) -> dict:
         status="COMPLETED", completed_at=now, updated_at=now
     ))
     _append_status_record(db, job_id, "Job completed")
-    ensure_invoice_for_completed_job(db, job_id)
+    invoice = ensure_invoice_for_completed_job(db, job_id)
     with best_effort_notification(db, NotificationType.JOB_COMPLETED):
         requests = tables(db)["service_requests"]
         client_id = db.scalar(
@@ -434,6 +434,22 @@ def complete_job(db: Session, user: Any, job_id: int) -> dict:
                 title="Job Completed",
                 message=f"Job #{job_id} has been completed.",
                 notification_type=NotificationType.JOB_COMPLETED,
+            )
+    with best_effort_notification(db, NotificationType.INVOICE_ISSUED):
+        requests = tables(db)["service_requests"]
+        client_id = db.scalar(
+            select(requests.c.client_id).where(requests.c.id == job["request_id"])
+        )
+        if client_id is not None:
+            create_notification(
+                db,
+                user_id=client_id,
+                title="Invoice Issued",
+                message=(
+                    f"Invoice {invoice.invoice_number} for job #{job_id} is ready. "
+                    f"Total: LKR {invoice.total_amount:.2f}."
+                ),
+                notification_type=NotificationType.INVOICE_ISSUED,
             )
     db.commit()
     return _get_job(db, user, job_id)

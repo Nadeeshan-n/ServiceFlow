@@ -18,6 +18,7 @@ from app.services.notification_events import (
     best_effort_notification,
     notify_provider_owners,
 )
+from app.services.notification_service import create_notification
 
 
 PROVIDER_ROLES = {"COMPANY_MANAGER", "INDIVIDUAL_PROVIDER"}
@@ -168,6 +169,29 @@ def record_payment(db: Session, user: Any, invoice_id: int, payload: dict) -> di
                 message=f"Payment #{payment.id} was recorded for invoice #{invoice.id}.",
                 notification_type=NotificationType.PAYMENT_RECORDED,
             )
+        with best_effort_notification(db, NotificationType.PAYMENT_RECORDED):
+            request = db.get(ServiceRequest, job.request_id)
+            if request is not None:
+                if invoice.payment_status == "PAID":
+                    client_title = "Invoice Paid"
+                    client_message = (
+                        f"Payment of LKR {amount:.2f} was recorded for invoice "
+                        f"{invoice.invoice_number}. The invoice is now fully paid."
+                    )
+                else:
+                    client_title = "Payment Recorded"
+                    client_message = (
+                        f"Payment of LKR {amount:.2f} was recorded for invoice "
+                        f"{invoice.invoice_number}. Remaining balance: "
+                        f"LKR {total - new_paid:.2f}."
+                    )
+                create_notification(
+                    db,
+                    user_id=request.client_id,
+                    title=client_title,
+                    message=client_message,
+                    notification_type=NotificationType.PAYMENT_RECORDED,
+                )
         db.commit()
         return result
     except Exception:
