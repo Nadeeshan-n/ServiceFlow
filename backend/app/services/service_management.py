@@ -213,7 +213,34 @@ def _directory_query(service_id: int | None = None):
     }
 
 
-def _provider_summary(provider, rating, completed_jobs, review_count, starting_price) -> ProviderSummary:
+def _public_offerings(db: Session, provider_ids: list[int]) -> dict[int, list[PublicOffering]]:
+    if not provider_ids:
+        return {}
+    rows = db.execute(
+        select(ProviderService, Service)
+        .join(Service, Service.id == ProviderService.service_id)
+        .where(
+            ProviderService.provider_id.in_(provider_ids),
+            ProviderService.is_active.is_(True),
+            Service.is_active.is_(True),
+        )
+        .order_by(Service.name, ProviderService.id)
+    )
+    grouped: dict[int, list[PublicOffering]] = {}
+    for offer, service in rows:
+        grouped.setdefault(offer.provider_id, []).append(
+            PublicOffering(
+                id=offer.id,
+                service_id=offer.service_id,
+                service_name=service.name,
+                description=offer.description,
+                starting_price=offer.starting_price,
+            )
+        )
+    return grouped
+
+
+def _provider_summary(provider, rating, completed_jobs, review_count, starting_price, services=None) -> ProviderSummary:
     return ProviderSummary(
         id=provider.id,
         type=provider.type,
@@ -224,6 +251,7 @@ def _provider_summary(provider, rating, completed_jobs, review_count, starting_p
         completed_jobs=completed_jobs,
         review_count=int(review_count),
         starting_price=starting_price,
+        services=services or [],
     )
 
 
@@ -251,8 +279,12 @@ def search_providers(
         query = query.where(Provider.type == provider_type)
     rows = db.execute(
         query.order_by(sorting[sort_by], Provider.id).limit(limit).offset(offset)
-    )
-    return [_provider_summary(*row) for row in rows]
+    ).all()
+    offerings = _public_offerings(db, [row[0].id for row in rows])
+    return [
+        _provider_summary(*row, services=offerings.get(row[0].id, []))
+        for row in rows
+    ]
 
 
 def public_provider(db: Session, provider_id: int) -> ProviderDetail:
@@ -263,23 +295,16 @@ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
     if row is None:
         raise HTTPException(404, "Provider not found")
     provider, rating, completed_jobs, review_count, starting_price = row
-    summary = _provider_summary(provider, rating, completed_jobs, review_count, starting_price)
+    services = _public_offerings(db, [provider_id]).get(provider_id, [])
+    summary = _provider_summary(
+        provider, rating, completed_jobs, review_count, starting_price, services=services
+    )
 
     areas = db.scalars(
         select(ProviderArea.area_name)
         .where(ProviderArea.provider_id == provider_id)
         .order_by(ProviderArea.area_name)
     ).all()
-    offerings = db.execute(
-        select(ProviderService, Service)
-        .join(Service, Service.id == ProviderService.service_id)
-        .where(
-            ProviderService.provider_id == provider_id,
-            ProviderService.is_active.is_(True),
-            Service.is_active.is_(True),
-        )
-        .order_by(Service.name, ProviderService.id)
-    )
     policies = db.scalars(
         select(Policy)
         .where(
@@ -295,16 +320,6 @@ def public_provider(db: Session, provider_id: int) -> ProviderDetail:
         phone=provider.phone,
         address=provider.address,
         areas=list(areas),
-        services=[
-            PublicOffering(
-                id=offer.id,
-                service_id=offer.service_id,
-                service_name=service.name,
-                description=offer.description,
-                starting_price=offer.starting_price,
-            )
-            for offer, service in offerings
-        ],
         policies=[PublicPolicy.model_validate(policy) for policy in policies],
     )
 

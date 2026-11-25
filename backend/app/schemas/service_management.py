@@ -97,6 +97,7 @@ class ProviderSummary(BaseModel):
     completed_jobs: int
     review_count: int
     starting_price: Decimal | None
+    services: list[PublicOffering]
 
 
 class PublicPolicy(BaseModel):
