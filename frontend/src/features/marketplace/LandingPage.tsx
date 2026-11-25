@@ -16,14 +16,19 @@ import { ProviderExplorer } from './landing/ProviderExplorer'
 import { Estimator } from './landing/Estimator'
 import { FlowAIChat } from './landing/FlowAIChat'
 
-const categories = [
-  { name: 'Plumbing', icon: Wrench, keyword: 'plumb' },
-  { name: 'Electrical', icon: Zap, keyword: 'electr' },
-  { name: 'Cleaning', icon: Sparkles, keyword: 'clean' },
-  { name: 'Vehicle Repairs', icon: Car, keyword: 'vehicle' },
-  { name: 'Appliance Repair', icon: Plug, keyword: 'appliance' },
-  { name: 'Painting', icon: PaintRoller, keyword: 'paint' },
+const serviceIcons = [
+  { keyword: 'plumb', icon: Wrench },
+  { keyword: 'electr', icon: Zap },
+  { keyword: 'clean', icon: Sparkles },
+  { keyword: 'vehicle', icon: Car },
+  { keyword: 'appliance', icon: Plug },
+  { keyword: 'paint', icon: PaintRoller },
 ] as const
+
+function serviceIcon(name: string) {
+  const lower = name.toLowerCase()
+  return serviceIcons.find(entry => lower.includes(entry.keyword))?.icon ?? Wrench
+}
 
 const tickerItems = [
   'Browse providers without an account',
@@ -73,6 +78,12 @@ export function LandingPage() {
   const { user } = useSession()
   const resource = useResource(() => clientService.companies())
   const companies = resource.data ?? []
+
+  // Browse-by-service cards are derived from the services providers actually
+  // offer, so a card can never promise providers that do not exist.
+  const serviceCounts = new Map<string, number>()
+  for (const company of companies) for (const offer of company.offerings) if (offer.active) serviceCounts.set(offer.name, (serviceCounts.get(offer.name) ?? 0) + 1)
+  const serviceCards = [...serviceCounts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name))
 
   const [lab, setLab] = useState<LabState>(initialLab)
   const [sendSignal, setSendSignal] = useState(0)
@@ -177,27 +188,26 @@ export function LandingPage() {
         onCounts={(total, done) => setBoardCounts(current => current.total === total && current.done === done ? current : { total, done })} />
     </section>
 
-    {/* Categories */}
-    <section className="sf-directory-section" aria-labelledby="landing-categories">
+    {/* Categories — one card per service actually offered */}
+    {serviceCards.length > 0 && <section className="sf-directory-section" aria-labelledby="landing-categories">
       <div className="sf-section-heading">
         <div>
           <p className="sf-eyebrow"><span />BROWSE BY SERVICE</p>
           <h2 id="landing-categories">What do you need done?</h2>
-          <p>Start with a category — you will see the providers who offer it.</p>
+          <p>Start with a service — you will see the providers who offer it.</p>
         </div>
       </div>
       <div className="sf-category-grid">
-        {categories.map(({ name, icon: Icon, keyword }) => {
-          const count = companies.filter(company =>
-            `${company.category} ${company.offerings.map(offer => offer.name).join(' ')}`.toLowerCase().includes(keyword)).length
+        {serviceCards.map(({ name, count }) => {
+          const Icon = serviceIcon(name)
           return <button key={name} type="button" className="sf-category-card" onClick={() => { setExplorerQuery(name); document.getElementById('providers')?.scrollIntoView({ behavior: 'smooth' }) }}>
             <Icon size={24} aria-hidden="true" />
             <span className="sf-display font-semibold">{name}</span>
-            <span className="text-sm text-text-secondary">{count ? `${count} provider${count === 1 ? '' : 's'} listed` : 'Browse providers'}</span>
+            <span className="text-sm text-text-secondary">{`${count} provider${count === 1 ? '' : 's'} listed`}</span>
           </button>
         })}
       </div>
-    </section>
+    </section>}
 
     {/* Provider explorer */}
     <section className="sf-directory-section" id="providers" aria-labelledby="landing-providers">
