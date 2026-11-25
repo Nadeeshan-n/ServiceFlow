@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useSession } from '../../app/session'
 import { ActionButton, StarRating, SurfaceCard } from '../../components'
 import { Resource, useResource } from '../../components/client-shared'
 import { providerService } from '../../lib/provider-service'
@@ -47,6 +48,7 @@ function DashboardContent({ requests, jobs, invoices, reviews, onNavigate }: {
   reviews: ProviderReviewRow[]
   onNavigate: (path: string) => void
 }) {
+  const { user } = useSession()
   const newRequests = requests.filter(r => r.status === 'NEW').length
   const underReview = requests.filter(r => r.status === 'UNDER_REVIEW').length
   const needInfo = requests.filter(r => r.status === 'NEED_INFORMATION').length
@@ -112,7 +114,7 @@ function DashboardContent({ requests, jobs, invoices, reviews, onNavigate }: {
         <ActionButton variant="stamp" onClick={() => onNavigate('/manager/requests')}>Review requests</ActionButton>
         <ActionButton variant="stub" onClick={() => onNavigate('/manager/schedule')}>Schedule a job</ActionButton>
         <ActionButton variant="stub" onClick={() => onNavigate('/manager/invoices')}>Record payment</ActionButton>
-        <ActionButton variant="stub" onClick={() => onNavigate('/manager/team')}>Manage team</ActionButton>
+        {user?.provider_kind !== 'individual' && <ActionButton variant="stub" onClick={() => onNavigate('/manager/team')}>Manage team</ActionButton>}
         <ActionButton variant="stub" onClick={() => onNavigate('/manager/business')}>My business</ActionButton>
       </div>
     </SurfaceCard>

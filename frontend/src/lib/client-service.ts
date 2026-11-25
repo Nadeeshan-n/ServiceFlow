@@ -23,7 +23,7 @@ function normalizeUser(value: BackendUser): User {
   const roles: Record<string, Role> = { CLIENT: 'client', COMPANY_MANAGER: 'manager', INDIVIDUAL_PROVIDER: 'manager', EMPLOYEE: 'employee', SYSTEM_ADMIN: 'admin', client: 'client', manager: 'manager', employee: 'employee', admin: 'admin' }
   const role = roles[value.role]
   if (!role) throw new ApiError('This account role is not supported by the current release.', 403)
-  return { ...value, id: String(value.id), role }
+  return { ...value, id: String(value.id), role, provider_kind: value.role === 'INDIVIDUAL_PROVIDER' ? 'individual' : value.role === 'COMPANY_MANAGER' ? 'company' : value.provider_kind }
 }
 
 function providerSummary(value: ApiProviderSummary): Company {

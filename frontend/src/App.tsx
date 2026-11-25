@@ -55,7 +55,7 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
   const { user, requestLogout } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
-  const items = roleNav[role];
+  const items = roleNav[role].filter(item => item.href !== '/manager/team' || user?.provider_kind !== 'individual');
 
   const activeHref = items.reduce<string>((current, item) => {
     const isExactMatch = location.pathname === item.href;
@@ -106,13 +106,14 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
   );
 }
 
-function RoleGuard({ role, children }: { role: Role; children: ReactNode }) {
+function RoleGuard({ role, children, companyOnly = false }: { role: Role; children: ReactNode; companyOnly?: boolean }) {
   const { user } = useSession()
   if (!user) return <Navigate to="/login" replace />
   if (user.email_verified === false) return <Navigate to="/verify-email" replace />
   if (user.must_change_password) return <Navigate to="/change-password" replace />
   if (user.role !== role) return <Navigate to={destination(user)} replace />
   if (role === 'manager' && user.company_status !== 'APPROVED') return <Navigate to="/pending-verification" replace />
+  if (companyOnly && user.provider_kind === 'individual') return <Navigate to="/manager" replace />
   return <>{children}</>
 }
 
@@ -155,7 +156,7 @@ export default function App() {
         <Route path="/manager/schedule" element={<RoleGuard role="manager"><Shell role="manager"><ManagerSchedule /></Shell></RoleGuard>} />
         <Route path="/manager/invoices" element={<RoleGuard role="manager"><Shell role="manager"><Invoices /></Shell></RoleGuard>} />
         <Route path="/manager/business" element={<RoleGuard role="manager"><Shell role="manager"><MyBusiness /></Shell></RoleGuard>} />
-        <Route path="/manager/team" element={<RoleGuard role="manager"><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />
+        <Route path="/manager/team" element={<RoleGuard role="manager" companyOnly><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />
         <Route path="/manager/company" element={<RoleGuard role="manager"><Navigate to="/manager/business" replace /></RoleGuard>} />
         <Route path="/manager/disputes" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDisputes /></Shell></RoleGuard>} />
 
