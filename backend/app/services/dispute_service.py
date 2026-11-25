@@ -8,7 +8,13 @@ from app.models.dispute import Dispute
 from app.models.job import Job
 from app.models.service_request import ServiceRequest
 from app.models.user import User
-from app.schemas.dispute import DisputeCreate, DisputeUpdate, RatingCreate, RatingResponse
+from app.schemas.dispute import (
+    DisputeCreate,
+    DisputeResponse,
+    DisputeUpdate,
+    RatingCreate,
+    RatingResponse,
+)
 
 
 ACTIVE_DISPUTE_STATUSES = ("OPEN", "UNDER_REVIEW")
@@ -54,16 +60,25 @@ def open_dispute(db: Session, user: User, job_id: int, data: DisputeCreate) -> D
     return dispute
 
 
+def _response(dispute: Dispute, opener: User | None) -> DisputeResponse:
+    result = DisputeResponse.model_validate(dispute)
+    if opener is not None:
+        result.opened_by_name = opener.name
+        result.opened_by_email = opener.email
+    return result
+
+
 def list_disputes(
     db: Session, *, limit: int, offset: int, user: User | None = None
-) -> list[Dispute]:
-    query = select(Dispute)
+) -> list[DisputeResponse]:
+    query = select(Dispute, User).join(User, User.id == Dispute.opened_by)
     if user is not None:
         query = query.join(Job, Job.id == Dispute.job_id).where(_job_scope(user))
-    return list(db.scalars(query.order_by(Dispute.id.desc()).offset(offset).limit(limit)))
+    rows = db.execute(query.order_by(Dispute.id.desc()).offset(offset).limit(limit))
+    return [_response(dispute, opener) for dispute, opener in rows]
 
 
-def update_dispute(db: Session, dispute_id: int, data: DisputeUpdate) -> Dispute:
+def update_dispute(db: Session, dispute_id: int, data: DisputeUpdate) -> DisputeResponse:
     dispute = db.scalar(select(Dispute).where(Dispute.id == dispute_id).with_for_update())
     if dispute is None:
         raise HTTPException(404, "Dispute not found")
@@ -77,7 +92,8 @@ def update_dispute(db: Session, dispute_id: int, data: DisputeUpdate) -> Dispute
         dispute.closed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(dispute)
-    return dispute
+    opener = db.scalar(select(User).where(User.id == dispute.opened_by))
+    return _response(dispute, opener)
 
 
 def rate_job(db: Session, user: User, job_id: int, data: RatingCreate) -> RatingResponse:

@@ -208,6 +208,8 @@ export type DisputeRow = {
   id: number
   job_id: number
   opened_by: number
+  opened_by_name?: string | null
+  opened_by_email?: string | null
   reason: string
   description: string
   status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'CLOSED'

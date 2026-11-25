@@ -28,7 +28,7 @@ function DisputeCard({ dispute }: { dispute: DisputeRow }) {
         </span>
       </div>
       <span className="text-xs text-text-secondary">
-        Opened by {dispute.opened_by === 0 ? 'you' : `user #${dispute.opened_by}`}
+        Opened by {dispute.opened_by_name ?? (dispute.opened_by === 0 ? 'you' : `user #${dispute.opened_by}`)}
       </span>
     </div>
     <div>

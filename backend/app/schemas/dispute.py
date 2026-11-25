@@ -28,6 +28,8 @@ class DisputeResponse(BaseModel):
     id: int
     job_id: int
     opened_by: int
+    opened_by_name: str | None = None
+    opened_by_email: str | None = None
     reason: str
     description: str
     status: DisputeStatus

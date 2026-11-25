@@ -49,7 +49,7 @@ export default function AdminDisputes() {
                 <p className="mt-1 text-sm whitespace-pre-wrap">{d.description}</p>
               </div>
               <div className="grid grid-cols-1 gap-2 text-xs text-text-secondary sm:grid-cols-3">
-                <div>Opened by user #{d.opened_by}</div>
+                <div>Opened by {d.opened_by_name ?? `user #${d.opened_by}`}{d.opened_by_email ? ` · ${d.opened_by_email}` : ''}</div>
                 <div>Created {dateTime(d.created_at)}</div>
                 {d.closed_at && <div>Closed {dateTime(d.closed_at)}</div>}
               </div>
