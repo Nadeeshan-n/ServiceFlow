@@ -8,7 +8,6 @@ import AdminDisputes from "./features/admin/Disputes";
 import AdminAllRequestsJobs from "./features/admin/AllRequestsJobs";
 import { NotificationBell } from "./components/NotificationBell";
 import { FlowAIBubble } from "./components/FlowAIBubble";
-import PolicyPage from "./features/manager/PolicyPage";
 import { Footer } from "./components/layout/Footer";
 import { ThemeToggle } from "./components/ThemeToggle";
 
@@ -157,7 +156,6 @@ export default function App() {
         <Route path="/manager/invoices" element={<RoleGuard role="manager"><Shell role="manager"><Invoices /></Shell></RoleGuard>} />
         <Route path="/manager/business" element={<RoleGuard role="manager"><Shell role="manager"><MyBusiness /></Shell></RoleGuard>} />
         <Route path="/manager/team" element={<RoleGuard role="manager"><Shell role="manager"><ManagerTeam /></Shell></RoleGuard>} />
-        <Route path="/manager/ai" element={<RoleGuard role="manager"><Shell role="manager"><PolicyPage /></Shell></RoleGuard>} />
         <Route path="/manager/company" element={<RoleGuard role="manager"><Navigate to="/manager/business" replace /></RoleGuard>} />
         <Route path="/manager/disputes" element={<RoleGuard role="manager"><Shell role="manager"><ManagerDisputes /></Shell></RoleGuard>} />
 

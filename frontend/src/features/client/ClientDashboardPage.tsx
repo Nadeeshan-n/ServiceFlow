@@ -8,7 +8,6 @@ import { InvoiceDetailPage, JobDetailPage, QuoteDetailPage, RecordsPage, Request
 import { ProfileSettings } from './ProfileSettings'
 import { NotificationsPage } from './NotificationsPage'
 import { NewRequestPage } from '../marketplace/RequestForm'
-import { ClientFlowAI } from '../marketplace/ClientFlowAI'
 
 const tabs = [
   { key: 'overview', label: 'Overview' },
@@ -62,10 +61,6 @@ export function ClientDashboardPage() {
       {tab === 'notifications' && <NotificationsPage />}
     </section>
     </Tabs>
-    <details className="sf-card mt-8 p-5">
-      <summary className="cursor-pointer font-semibold">Client Flow AI · ask about a company policy</summary>
-      <div className="mt-5"><CompanyAI /></div>
-    </details>
     <Modal open={creating} title="Create a service request" onClose={closeRequest}>
       {creating && <CreateRequest companyId={search.get('company') || ''} onCreated={created} onCancel={closeRequest} />}
     </Modal>
@@ -86,16 +81,3 @@ function CreateRequest({ companyId, onCreated, onCancel }: { companyId: string; 
   </Resource>
 }
 
-function CompanyAI() {
-  const resource = useResource(() => clientService.companies())
-  const [company, setCompany] = useState('')
-  return <Resource {...resource} retry={resource.reload}>
-    <div className="max-w-xl space-y-5">
-      <SelectField label="Policy company" value={company} onChange={event => setCompany(event.target.value)}>
-        <option value="">Choose a company</option>
-        {resource.data?.map(value => <option key={value.id} value={value.id}>{value.name}</option>)}
-      </SelectField>
-      {company && <ClientFlowAI key={company} companyId={company} />}
-    </div>
-  </Resource>
-}

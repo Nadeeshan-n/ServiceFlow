@@ -3,7 +3,6 @@ import { EmptyState, SurfaceCard } from '../../components'
 import { money, PageHeader, Resource, useResource } from '../../components/client-shared'
 import { clientService } from '../../lib/client-service'
 import { demoMode } from '../../lib/api'
-import { ClientFlowAI } from './ClientFlowAI'
 import { PublicFeedback } from './PublicFeedback'
 export { NewRequestPage } from './RequestForm'
 
@@ -44,7 +43,6 @@ export function CompanyPage() {
             <h2 className="sf-display mb-3 text-xl font-semibold">Public policy</h2>
             {(company.policies || []).length ? <ul className="space-y-2">{company.policies!.map(policy => <li key={policy.id} className="text-sm">{policy.title} <span className="text-text-secondary">· {policy.policy_type}</span>{!demoMode && <> {' '}<button type="button" className="sf-link" onClick={() => void clientService.downloadPolicy(id, policy.id, policy.title)}>Download PDF</button></>}</li>)}</ul> : <p className="text-sm text-text-secondary">This company has not published a public policy.</p>}
           </SurfaceCard>
-          <SurfaceCard className="p-6"><ClientFlowAI key={id} companyId={id} /></SurfaceCard>
         </aside>
       </div>
     </>}

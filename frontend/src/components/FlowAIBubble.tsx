@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, type ChangeEvent } from 'react'
 import { Sparkles, X, Send, Paperclip, FileText, Check, Lock } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../app/session'
 import { api, apiUpload, ApiError } from '../lib/api'
+import { clientService } from '../lib/client-service'
 import { formatCitation, type ApiCitation } from '../lib/citations'
 
 type Message = {
@@ -56,7 +57,13 @@ function isThanks(text: string): boolean {
 export function FlowAIBubble() {
   const { user } = useSession()
   const navigate = useNavigate()
+  const location = useLocation()
   const isProvider = user?.role === 'manager'
+  const isClient = user?.role === 'client'
+  // Clients ask about the company whose profile they are viewing; the
+  // company id comes from the /companies/:id route.
+  const companyId = location.pathname.match(/^\/companies\/(\d+)/)?.[1]
+  const [companyName, setCompanyName] = useState('')
 
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<'data' | 'policy'>('data')
@@ -91,6 +98,28 @@ export function FlowAIBubble() {
       }])
     }
   }, [open, user, isProvider, messages.length])
+
+  useEffect(() => {
+    if (!companyId) { setCompanyName(''); return }
+    let cancelled = false
+    clientService.company(companyId).then(c => { if (!cancelled) setCompanyName(c?.name || '') }).catch(() => {})
+    return () => { cancelled = true }
+  }, [companyId])
+
+  useEffect(() => {
+    if (isClient && companyId) setMode('policy')
+  }, [isClient, companyId])
+
+  useEffect(() => {
+    if (open && user && isClient && messages.length === 0) {
+      setMessages([{
+        role: 'assistant',
+        content: companyId
+          ? `Hi ${user.name.split(' ')[0] || 'there'}! 👋 I'm Flow AI. You're viewing ${companyName || 'this company'} — ask me anything about their public policy and I'll answer with page citations.`
+          : `Hi ${user.name.split(' ')[0] || 'there'}! 👋 I'm Flow AI. Open a company's profile from Find a service, and you can ask me about their public policy right here.`,
+      }])
+    }
+  }, [open, user, isClient, messages.length, companyId, companyName])
 
   if (user?.role === 'admin') return null
 
@@ -138,16 +167,16 @@ export function FlowAIBubble() {
       handleSignIn()
       return
     }
-    if (!isProvider) {
+    const question = (text ?? input).trim()
+    if (!question || loading) return
+    if (!isProvider && !isClient) {
       setMessages(m => [...m, {
         role: 'assistant',
-        content: 'Flow AI is only available to provider accounts. If you have questions about a company\'s policy, visit their company profile page.',
+        content: 'Flow AI chat is available to provider and client accounts.',
         error: true,
       }])
       return
     }
-    const question = (text ?? input).trim()
-    if (!question || loading) return
     setInput('')
     setShowSuggestions(false)
     setMessages(m => [...m, { role: 'user', content: question }])
@@ -155,12 +184,18 @@ export function FlowAIBubble() {
     if (isGreeting(question)) {
       setMessages(m => [...m, {
         role: 'assistant',
-        content: `Hello! 👋 How can I help you today?\n\nI can answer questions about your business data or policy documents.`,
-        quickActions: [
-          { label: 'Ask about my business', action: 'business' },
-          { label: 'Ask about my policy', action: 'policy' },
-          { label: 'Upload a policy PDF', action: 'upload' },
-        ],
+        content: isProvider
+          ? `Hello! 👋 How can I help you today?\n\nI can answer questions about your business data or policy documents.`
+          : companyId
+            ? `Hello! 👋 Ask me anything about ${companyName || 'this company'}'s public policy.`
+            : `Hello! 👋 Open a company's profile from Find a service, and you can ask me about their public policy right here.`,
+        ...(isProvider ? {
+          quickActions: [
+            { label: 'Ask about my business', action: 'business' },
+            { label: 'Ask about my policy', action: 'policy' },
+            { label: 'Upload a policy PDF', action: 'upload' },
+          ] as Message['quickActions'],
+        } : {}),
       }])
       return
     }
@@ -170,6 +205,45 @@ export function FlowAIBubble() {
         role: 'assistant',
         content: 'You\'re welcome! 😊 Anything else I can help with?',
       }])
+      return
+    }
+
+    if (isClient) {
+      if (mode === 'data') {
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content: 'Business questions are for provider accounts only. Switch to the Policy tab to ask about a company\'s public policy.',
+          error: true,
+        }])
+        return
+      }
+      if (!companyId) {
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content: 'Open a company profile first — Find a service, pick a company — then ask me about its public policy here.',
+        }])
+        return
+      }
+      setLoading(true)
+      try {
+        const answer = await clientService.ask(companyId, question)
+        setMessages(m => [...m, {
+          role: 'assistant',
+          content: answer.answer,
+          citations: answer.citations.map(c => ({ document_name: c.title, page_number: c.page })),
+        }])
+      } catch (e) {
+        let msg = 'Something went wrong.'
+        if (e instanceof ApiError) {
+          if (e.status === 502 || e.status === 503) msg = 'Flow AI is unavailable right now. Please try again.'
+          else if (e.status === 401) { msg = 'Your session expired. Please sign in again.'; handleSignIn() }
+          else if (e.status === 0) msg = 'Cannot reach the server. Check your connection and try again.'
+          else msg = e.message
+        }
+        setMessages(m => [...m, { role: 'assistant', content: msg, error: true }])
+      } finally {
+        setLoading(false)
+      }
       return
     }
 
@@ -281,9 +355,9 @@ export function FlowAIBubble() {
         onClick={handleBubbleClick}
         className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-40 h-14 w-14 rounded-full shadow-xl flex items-center justify-center hover:scale-105 transition-transform bg-signal text-ink"
         aria-label={open ? 'Close Flow AI' : 'Open Flow AI'}
-        title={user ? (isProvider ? 'Flow AI' : 'Flow AI (provider only)') : 'Sign in to use Flow AI'}
+        title={user ? (isProvider || isClient ? 'Flow AI' : 'Flow AI (provider only)') : 'Sign in to use Flow AI'}
       >
-        {open ? <X size={22} /> : user && isProvider ? <Sparkles size={22} /> : <Lock size={22} />}
+        {open ? <X size={22} /> : user && (isProvider || isClient) ? <Sparkles size={22} /> : <Lock size={22} />}
       </button>
 
       {open && (
@@ -344,7 +418,19 @@ export function FlowAIBubble() {
               </div>
             )}
 
-            {user && !isProvider && messages.length === 0 && (
+            {user && isClient && messages.length === 0 && (
+              <div className="text-center py-12 px-4">
+                <FileText className="mx-auto mb-3 text-signal" size={32} />
+                <h4 className="font-semibold mb-2 text-foreground">{companyId ? `Ask about ${companyName || 'this company'}'s policy` : 'Company policy questions'}</h4>
+                <p className="text-xs text-text-secondary">
+                  {companyId
+                    ? 'Answers come from the company\'s public policy PDF and include page citations.'
+                    : 'Open a company profile from Find a service, then ask about its policy here.'}
+                </p>
+              </div>
+            )}
+
+            {user && !isProvider && !isClient && messages.length === 0 && (
               <div className="text-center py-12 px-4">
                 <Lock className="mx-auto mb-3 text-signal" size={32} />
                 <h4 className="font-semibold mb-2 text-foreground">Provider-only feature</h4>
@@ -352,7 +438,7 @@ export function FlowAIBubble() {
                   Flow AI is available to provider accounts only.
                 </p>
                 <p className="text-xs text-text-secondary">
-                  For policy questions, visit the company profile page.
+                  Clients can ask about a company's public policy using this button while viewing the company.
                 </p>
               </div>
             )}
@@ -504,28 +590,32 @@ export function FlowAIBubble() {
                 Sign in to chat
               </button>
             </div>
-          ) : !isProvider ? (
+          ) : !isProvider && !isClient ? (
             <div className="p-3 border-t border-line text-center text-xs text-text-secondary">
               Flow AI is provider-only
             </div>
           ) : (
             <div className="p-2 border-t border-line flex gap-2 items-center">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={pickFile}
-              />
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading || loading}
-                className="p-2 rounded-lg disabled:opacity-40 text-signal hover:bg-line/20"
-                aria-label="Upload PDF"
-                title="Upload policy PDF"
-              >
-                <Paperclip size={16} />
-              </button>
+              {isProvider && (
+                <>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={pickFile}
+                  />
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading || loading}
+                    className="p-2 rounded-lg disabled:opacity-40 text-signal hover:bg-line/20"
+                    aria-label="Upload PDF"
+                    title="Upload policy PDF"
+                  >
+                    <Paperclip size={16} />
+                  </button>
+                </>
+              )}
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
