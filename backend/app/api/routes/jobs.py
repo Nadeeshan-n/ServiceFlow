@@ -83,6 +83,15 @@ def approve_schedule(job_id: int, db: Session = Depends(get_db),
         _translate(error)
 
 
+@router.post("/{job_id}/schedule/decline", response_model=JobRead)
+def decline_schedule(job_id: int, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+    try:
+        return service.decline_schedule(db, current_user, job_id)
+    except service.JobServiceError as error:
+        _translate(error)
+
+
 @router.post("/{job_id}/start", response_model=JobRead)
 def start_job(job_id: int, db: Session = Depends(get_db),
               current_user: User = Depends(get_current_user)):

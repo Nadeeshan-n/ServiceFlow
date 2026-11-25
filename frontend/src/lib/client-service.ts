@@ -334,6 +334,12 @@ export const clientService = {
     if (row.status !== 'SCHEDULE_PROPOSED') throw new ApiError('The appointment has changed. Refresh before deciding.', 409)
     row.status = 'SCHEDULE_CONFIRMED'
   },
+  async declineSchedule(id: string) {
+    if (liveApiMode || !demoMode) return api(`/jobs/${encodeURIComponent(id)}/schedule/decline`, 'POST')
+    await wait(); const row = find(jobs, (await clientService.job(id)).id)
+    if (row.status !== 'SCHEDULE_PROPOSED') throw new ApiError('The appointment has changed. Refresh before deciding.', 409)
+    row.status = 'JOB_CREATED'; delete row.appointment
+  },
   async cancelJob(id: string, reason: string) {
     if (liveApiMode || !demoMode) return api(`/jobs/${encodeURIComponent(id)}/cancel`, 'POST', { reason })
     await wait(); const row = find(jobs, (await clientService.job(id)).id)

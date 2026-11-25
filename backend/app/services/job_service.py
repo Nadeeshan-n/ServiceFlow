@@ -19,6 +19,7 @@ from app.services.notification_events import (
     NotificationType,
     best_effort_notification,
     create_notification,
+    notify_provider_owners,
 )
 
 
@@ -383,6 +384,33 @@ def approve_schedule(db: Session, user: Any, job_id: int) -> dict:
             title="Schedule Approved",
             message=f"The client approved the schedule for job #{job_id}.",
             notification_type=NotificationType.SCHEDULE_APPROVED,
+        )
+    db.commit()
+    return _get_job(db, user, job_id)
+
+
+def decline_schedule(db: Session, user: Any, job_id: int) -> dict:
+    if role(user) != "CLIENT":
+        fail(403, "Only the client who owns the job can decline its schedule")
+    job = _get_job(db, user, job_id, lock=True)
+    if job["status"] != "SCHEDULE_PROPOSED" or job["schedule_status"] != "PENDING":
+        fail(409, "There is no pending schedule proposal to decline")
+    jobs = tables(db)["jobs"]
+    db.execute(update(jobs).where(jobs.c.id == job_id).values(
+        schedule_date=None,
+        schedule_time=None,
+        schedule_status="NOT_PROPOSED",
+        status="JOB_CREATED",
+        updated_at=datetime.now(timezone.utc),
+    ))
+    _append_status_record(db, job_id, "Client declined the proposed schedule")
+    with best_effort_notification(db, NotificationType.SCHEDULE_DECLINED):
+        notify_provider_owners(
+            db,
+            provider_id=int(job["provider_id"]),
+            title="Schedule Declined",
+            message=f"The client declined the proposed schedule for job #{job_id}. Please propose a new time.",
+            notification_type=NotificationType.SCHEDULE_DECLINED,
         )
     db.commit()
     return _get_job(db, user, job_id)

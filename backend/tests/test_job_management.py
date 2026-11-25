@@ -17,6 +17,7 @@ def test_job_router_registers_expected_routes():
         "/jobs/{job_id}/assign",
         "/jobs/{job_id}/schedule",
         "/jobs/{job_id}/schedule/approve",
+        "/jobs/{job_id}/schedule/decline",
         "/jobs/{job_id}/start",
         "/jobs/{job_id}/complete",
         "/jobs/{job_id}/cancel",
@@ -39,6 +40,7 @@ def test_job_openapi_methods():
     assert "post" in paths["/jobs/{job_id}/assign"]
     assert "post" in paths["/jobs/{job_id}/schedule"]
     assert "post" in paths["/jobs/{job_id}/schedule/approve"]
+    assert "post" in paths["/jobs/{job_id}/schedule/decline"]
     assert "post" in paths["/jobs/{job_id}/start"]
     assert "post" in paths["/jobs/{job_id}/complete"]
     assert "post" in paths["/jobs/{job_id}/cancel"]
