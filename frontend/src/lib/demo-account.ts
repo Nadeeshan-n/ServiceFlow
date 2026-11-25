@@ -36,9 +36,9 @@ export const demoAccount = {
     const account: Account = {
       email, phone: body.phone, password: body.password,
       user: {
-        id: crypto.randomUUID(), name: body.name, role: kind === 'company' ? 'manager' : 'client',
+        id: crypto.randomUUID(), name: body.name, role: kind === 'client' ? 'client' : 'manager',
         email_verified: false,
-        ...(kind === 'company' ? { company_status: 'PENDING' as const, company_name: body.company_name } : {}),
+        ...(kind !== 'client' ? { company_status: 'PENDING' as const, company_name: body.company_name } : {}),
       },
     }
     accounts.set(email, account)

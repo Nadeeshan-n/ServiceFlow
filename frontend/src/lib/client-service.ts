@@ -20,7 +20,7 @@ type ApiNotification = { id: number; user_id: number; title: string; message: st
 type ApiNotificationList = { items: ApiNotification[]; page: number; limit: number; total: number; total_pages: number }
 export type ClientNotification = { id: string; title: string; message: string; type: string; is_read: boolean; created_at: string }
 function normalizeUser(value: BackendUser): User {
-  const roles: Record<string, Role> = { CLIENT: 'client', COMPANY_MANAGER: 'manager', EMPLOYEE: 'employee', SYSTEM_ADMIN: 'admin', client: 'client', manager: 'manager', employee: 'employee', admin: 'admin' }
+  const roles: Record<string, Role> = { CLIENT: 'client', COMPANY_MANAGER: 'manager', INDIVIDUAL_PROVIDER: 'manager', EMPLOYEE: 'employee', SYSTEM_ADMIN: 'admin', client: 'client', manager: 'manager', employee: 'employee', admin: 'admin' }
   const role = roles[value.role]
   if (!role) throw new ApiError('This account role is not supported by the current release.', 403)
   return { ...value, id: String(value.id), role }
@@ -188,10 +188,10 @@ export const clientService = {
         provider_name: body.company_name, provider_email: body.email, provider_phone: body.phone,
         name: body.name, email: body.email, phone: body.phone, password: body.password,
       }
-      await api(kind === 'client' ? '/auth/register' : '/auth/register/company', 'POST', payload)
+      await api(kind === 'client' ? '/auth/register' : kind === 'individual' ? '/auth/register/provider' : '/auth/register/company', 'POST', payload)
       return null
     }
-    if (!demoMode) { if (kind !== 'client') requireDemo('Company registration'); await api(kind === 'client' ? '/auth/register' : '/auth/register/company', 'POST', body); return null }
+    if (!demoMode) { if (kind !== 'client') requireDemo(kind === 'individual' ? 'Individual provider registration' : 'Company registration'); await api(kind === 'client' ? '/auth/register' : kind === 'individual' ? '/auth/register/provider' : '/auth/register/company', 'POST', body); return null }
     await wait()
     return demoAccount.register(kind, body)
   },
