@@ -57,7 +57,7 @@ export function EmailVerificationPage() {
   return <div className="mx-auto max-w-xl">
     <PageHeader title="Verify your email" description="Confirm your email address before opening your workspace." />
     <SurfaceCard className="space-y-5 p-6">
-      <Notice>{useLive ? 'Verification links expire in 30 minutes and can be used once. Verifying activates a new client account.' : 'Demo verification uses a single-use sample link valid for 15 minutes. No email is sent.'}</Notice>
+      <Notice>{useLive ? 'Verification links expire in 30 minutes and can be used once. Verifying confirms your email address; provider accounts also need administrator approval before they can sign in.' : 'Demo verification uses a single-use sample link valid for 15 minutes. No email is sent.'}</Notice>
       {!hasToken && useLive && !user && <TextField label="Email address" type="email" required autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" />}
       <ActionButton variant="stamp" disabled={pending} onClick={() => void perform(hasToken)}>
         {pending ? 'Please wait…' : hasToken ? 'Confirm email verification' : useLive ? 'Resend verification email' : 'Create sample verification link'}
