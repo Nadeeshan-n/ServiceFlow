@@ -29,7 +29,16 @@ export const clientFeedback = {
     return structuredClone(reviews.filter(review => review.company_id === companyId))
   },
   async reviewForJob(jobId: string) {
-    if (live()) return null
+    if (live()) {
+      try {
+        const job = await clientService.job(jobId)
+        const request = await clientService.request(job.request_id)
+        const rows = await clientFeedback.publicReviews(request.company_id)
+        return rows.find(review => review.job_id === jobId) || null
+      } catch {
+        return null
+      }
+    }
     requireDemo('Reviews')
     return structuredClone(reviews.find(review => review.job_id === jobId && review.client_id === demoAccount.id()) || null)
   },

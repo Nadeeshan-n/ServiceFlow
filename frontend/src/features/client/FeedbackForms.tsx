@@ -22,7 +22,7 @@ export function ReviewForm({ jobId }: { jobId: string }) {
   return <SurfaceCard className="max-w-3xl space-y-5 p-6">
     <h2 className="sf-display text-xl font-semibold">Review your completed service</h2>
     <Resource {...resource} retry={resource.reload}>
-      {resource.data ? <Notice>Your sample review was saved. {resource.data.rating} / 5 — {resource.data.comment}</Notice> : <form className="space-y-5" onSubmit={submit}>
+      {resource.data ? <Notice>{demoMode ? 'Your sample review was saved.' : 'Your review was saved.'} {resource.data.rating} / 5 — {resource.data.comment}</Notice> : <form className="space-y-5" onSubmit={submit}>
         {demoMode && <Notice>Sample reviews appear on the company profile during this demo session.</Notice>}
         <SelectField label="Rating" value={rating} onChange={event => setRating(event.target.value)}>{[5, 4, 3, 2, 1].map(value => <option key={value} value={value}>{value} out of 5</option>)}</SelectField>
         <TextAreaField label="Your review" required minLength={10} maxLength={1000} value={comment} onChange={event => setComment(event.target.value)} />
