@@ -4,6 +4,7 @@ import { ActionButton, FlowAIPanel, TextAreaField } from '../../components'
 import { Notice } from '../../components/client-shared'
 import { useSession } from '../../app/session'
 import { clientService } from '../../lib/client-service'
+import { formatCitation } from '../../lib/citations'
 import { demoMode } from '../../lib/api'
 import type { PolicyAnswer } from '../../types/client'
 
@@ -29,8 +30,8 @@ export function ClientFlowAI({ companyId }: { companyId: string }) {
   return <div className="space-y-5">
     <h2 className="sf-display text-xl font-semibold">Ask Flow AI</h2>
     <p className="text-sm text-text-secondary">Answers come from the selected company’s public policy PDF and include policy page citations.</p>
-    <Notice>Flow AI is available in demo mode only. Client access to the policy assistant has not been agreed yet.</Notice>
-    {!demoMode ? null : user?.role === 'client' ? <form onSubmit={ask} className="space-y-4">
+    {demoMode && <Notice>Flow AI is available in demo mode only. Client access to the policy assistant has not been agreed yet.</Notice>}
+    {(demoMode ? user?.role === 'client' : !!user) ? <form onSubmit={ask} className="space-y-4">
       <TextAreaField label="Your policy question" required maxLength={1000} value={question} onChange={event => setQuestion(event.target.value)} />
       <ActionButton type="submit" variant="stamp" disabled={pending || !question.trim()}>{pending ? 'Checking policy…' : 'Ask question'}</ActionButton>
     </form> : <Link className="sf-link" to="/login">Sign in as a client to ask →</Link>}
@@ -38,16 +39,12 @@ export function ClientFlowAI({ companyId }: { companyId: string }) {
     {pending && <FlowAIPanel question={submitted} loading />}
     {answer && <>
       <FlowAIPanel question={submitted} answer={answer.status === 'ANSWERED' && !cited ? 'The policy response did not include evidence. Please try again or open the public policy.' : answer.answer} source={cited ? answer.citations[0].title : undefined} page={cited ? answer.citations[0].page : undefined} />
-      {cited && answer.citations.map(citation => <PolicyCitation key={`${citation.policy_id}-${citation.page}`} citation={citation} />)}
+      {cited && answer.citations.map(citation => <PolicyCitation key={`${citation.policy_id}-${citation.page}`} companyId={companyId} citation={citation} />)}
     </>}
   </div>
 }
 
-function PolicyCitation({ citation }: { citation: PolicyAnswer['citations'][number] }) {
-  let url: URL
-  try { url = new URL(citation.url, window.location.origin) }
-  catch { return <Notice error>Policy citation link is unavailable.</Notice> }
-  if (!['https:', 'http:'].includes(url.protocol) || !Number.isInteger(citation.page) || citation.page < 1) return <Notice error>Policy citation link is unavailable.</Notice>
-  url.hash = `page=${citation.page}`
-  return <a className="sf-link block text-sm" target="_blank" rel="noreferrer" href={url.href}>{citation.title} · Version {citation.policy_version} · Page {citation.page} ↗</a>
+function PolicyCitation({ companyId, citation }: { companyId: string; citation: PolicyAnswer['citations'][number] }) {
+  const label = formatCitation({ document_name: citation.title, page_number: citation.page }) || citation.title
+  return <button type="button" className="sf-link block text-left text-sm" onClick={() => void clientService.downloadPolicy(companyId, citation.policy_id, citation.title)}>📄 {label} — download the policy PDF</button>
 }

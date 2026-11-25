@@ -7,6 +7,6 @@ export type RequestMessage = { id: string; request_id: string; sender_user_id: s
 export type Quote = { id: string; request_id: string; company_name: string; service: string; status: 'DRAFT' | 'SENT' | 'APPROVED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED'; items: { description: string; quantity: number; unit_price: number }[]; total: number }
 export type Job = { id: string; request_id: string; company_name: string; service: string; status: 'JOB_CREATED' | 'SCHEDULE_PROPOSED' | 'SCHEDULE_CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'; appointment?: string; address: string }
 export type Invoice = { id: string; job_id: string; company_name: string; service: string; total: number; status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID'; items: Quote['items']; invoice_number?: string; downpayment_amount?: number; paid_amount?: number }
-export type PolicyAnswer = { status: 'ANSWERED' | 'NO_POLICY' | 'INSUFFICIENT_EVIDENCE' | 'UNAVAILABLE'; answer: string; citations: { policy_id: string; policy_version: string; title: string; page: number; url: string }[] }
+export type PolicyAnswer = { status: 'ANSWERED' | 'NO_POLICY' | 'INSUFFICIENT_EVIDENCE' | 'UNAVAILABLE'; answer: string; citations: { policy_id: number; title: string; page: number }[] }
 export type Session = { access_token: string; user: User }
 export type RequestInput = { company_id: string; company_service_id: string; description: string; address: string; preferred_date: string; preferred_time?: string; latitude?: number; longitude?: number; photos?: { name: string; type: string; data_url: string }[] }

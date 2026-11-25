@@ -1,5 +1,5 @@
 import { demoAccount, requireDemo } from './demo-account'
-import { api, ApiError, demoMode, getAccessToken, liveApiMode, setAccessToken, uploadFile } from './api'
+import { api, apiBlob, ApiError, demoMode, getAccessToken, liveApiMode, setAccessToken, uploadFile } from './api'
 import type { Company, Invoice, Job, PolicyAnswer, Quote, RequestInput, RequestMessage, RequestRecord, Session, User, Role } from '../types/client'
 
 type BackendUser = Omit<User, 'id' | 'role'> & { id: string | number; role: string }
@@ -378,7 +378,23 @@ export const clientService = {
     return null
   },
   async ask(companyId: string, question: string): Promise<PolicyAnswer> {
-    if (!demoMode) throw new ApiError('Flow AI is available in demo mode only. Client access to the policy assistant has not been agreed yet.', 403)
+    if (liveApiMode || !demoMode) {
+      const data = await api<{ status: string; answer: string; citations?: { policy_id: number; document_name?: string; page_number?: number }[] }>(`/providers/${encodeURIComponent(companyId)}/ask-policy`, 'POST', { question }, { timeout: 60000 })
+      return {
+        status: data.status === 'answered' ? 'ANSWERED' : data.status === 'insufficient_evidence' ? 'INSUFFICIENT_EVIDENCE' : 'NO_POLICY',
+        answer: data.answer,
+        citations: (data.citations || []).map(citation => ({ policy_id: citation.policy_id, title: citation.document_name || 'Policy', page: citation.page_number || 1 })),
+      }
+    }
     await wait(); return { status: 'NO_POLICY', answer: 'No public policy is available for this sample company. Answers will appear when a company policy is connected.', citations: [] }
+  },
+  async downloadPolicy(companyId: string, policyId: number, title: string) {
+    const blob = await apiBlob(`/providers/${encodeURIComponent(companyId)}/policies/${policyId}/download`)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title.replace(/[^\w\s-]/g, '')}.pdf`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 }
