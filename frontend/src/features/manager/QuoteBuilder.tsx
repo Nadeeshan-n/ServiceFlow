@@ -16,7 +16,7 @@ export default function QuoteBuilder() {
 
   const request = useResource(() => providerService.getRequest(id), [id])
   const quotations = useResource(() => providerService.listQuotations(id), [id])
-  const hasLiveQuotation = quotations.data?.some(q => q.status !== 'DRAFT')
+  const hasLiveQuotation = quotations.data?.some(q => q.status === 'SENT' || q.status === 'APPROVED')
 
   return <>
     <PageHeader title={hasLiveQuotation ? "View quotation" : "Build quotation"} description={`For request #${id}`}>
@@ -59,10 +59,14 @@ function QuoteSection({ requestId, quotations, onChanged }: {
   onChanged: () => void
 }) {
   const draft = quotations.find(q => q.status === 'DRAFT')
-  const sent = quotations.find(q => q.status === 'SENT' || q.status === 'APPROVED' || q.status === 'DECLINED')
+  const sent = quotations.find(q => q.status === 'SENT' || q.status === 'APPROVED')
+  const declined = quotations.filter(q => q.status === 'DECLINED')
 
   if (sent) return <SentQuotation quotation={sent} />
-  return <QuotationForm requestId={requestId} existingDraft={draft} onSaved={onChanged} />
+  return <div className="space-y-6">
+    {declined.map(q => <SentQuotation key={q.id} quotation={q} />)}
+    <QuotationForm requestId={requestId} existingDraft={draft} onSaved={onChanged} />
+  </div>
 }
 
 function SentQuotation({ quotation }: { quotation: QuotationRow }) {
@@ -85,7 +89,7 @@ function SentQuotation({ quotation }: { quotation: QuotationRow }) {
         ? 'Sent — waiting for the client to approve or decline.'
         : quotation.status === 'APPROVED'
         ? 'Approved by the client. A job has been created.'
-        : 'Declined by the client.'}
+        : 'Declined by the client. You can send a revised quotation below.'}
     </Notice>
   </SurfaceCard>
 }
