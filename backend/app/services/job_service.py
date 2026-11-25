@@ -432,6 +432,14 @@ def start_job(db: Session, user: Any, job_id: int) -> dict:
         status="IN_PROGRESS", updated_at=datetime.now(timezone.utc)
     ))
     _append_status_record(db, job_id, "Job started")
+    with best_effort_notification(db, NotificationType.JOB_STARTED):
+        notify_provider_owners(
+            db,
+            provider_id=int(job["provider_id"]),
+            title="Job Started",
+            message=f"Job #{job_id} has been started.",
+            notification_type=NotificationType.JOB_STARTED,
+        )
     db.commit()
     return _get_job(db, user, job_id)
 
@@ -463,6 +471,14 @@ def complete_job(db: Session, user: Any, job_id: int) -> dict:
                 message=f"Job #{job_id} has been completed.",
                 notification_type=NotificationType.JOB_COMPLETED,
             )
+    with best_effort_notification(db, NotificationType.JOB_COMPLETED):
+        notify_provider_owners(
+            db,
+            provider_id=int(job["provider_id"]),
+            title="Job Completed",
+            message=f"Job #{job_id} has been completed.",
+            notification_type=NotificationType.JOB_COMPLETED,
+        )
     with best_effort_notification(db, NotificationType.INVOICE_ISSUED):
         requests = tables(db)["service_requests"]
         client_id = db.scalar(

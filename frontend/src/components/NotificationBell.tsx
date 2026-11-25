@@ -52,7 +52,7 @@ export function NotificationBell() {
   async function load() {
     setLoading(true); setError('')
     try {
-      const r = await providerService.listNotifications({ unread_only: unreadOnly, limit: 20 })
+      const r = await providerService.listNotifications({ unread_only: unreadOnly, limit: 100 })
       setItems(r.items)
     } catch (c) { setError((c as Error).message) } finally { setLoading(false) }
   }
