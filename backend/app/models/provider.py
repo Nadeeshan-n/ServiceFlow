@@ -38,7 +38,7 @@ class Provider(Base):
     accepting_requests: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        server_default="false",
+        server_default="true",
     )
 
     created_at: Mapped[datetime] = mapped_column(

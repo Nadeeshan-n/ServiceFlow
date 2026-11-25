@@ -128,7 +128,7 @@ def register_provider_account(
         address=data.address,
         description=data.description,
         verification_status="PENDING",
-        accepting_requests=False,
+        accepting_requests=True,
     )
 
     try:
