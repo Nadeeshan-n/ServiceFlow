@@ -21,7 +21,7 @@ import {
 } from "./components";
 import { Notice, PageHeader } from "./components/client-shared";
 import { ClientShell } from "./components/layout/ClientShell";
-import { ClientGuard, SessionProvider, destination } from "./app/session";
+import { ClientGuard, SessionLoading, SessionProvider, destination } from "./app/session";
 import { DirectoryPage } from "./features/marketplace/DirectoryPage";
 import { LandingPage } from "./features/marketplace/LandingPage";
 import { CompanyPage } from "./features/marketplace/pages";
@@ -107,8 +107,10 @@ function Shell({ role, children }: { role: Role; children: ReactNode }) {
 }
 
 function RoleGuard({ role, children, companyOnly = false }: { role: Role; children: ReactNode; companyOnly?: boolean }) {
-  const { user } = useSession()
-  if (!user) return <Navigate to="/login" replace />
+  const { user, restoring } = useSession()
+  const location = useLocation()
+  if (restoring) return <SessionLoading />
+  if (!user) return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
   if (user.email_verified === false) return <Navigate to="/verify-email" replace />
   if (user.must_change_password) return <Navigate to="/change-password" replace />
   if (user.role !== role) return <Navigate to={destination(user)} replace />

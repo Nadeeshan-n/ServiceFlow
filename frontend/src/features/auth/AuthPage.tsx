@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Check, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { ActionButton, SelectField, TextField } from '../../components'
 import { Notice } from '../../components/client-shared'
-import { destination, useSession } from '../../app/session'
+import { destination, safeReturnPath, useSession } from '../../app/session'
 import { ApiError, demoMode } from '../../lib/api'
 import { clientService } from '../../lib/client-service'
 
@@ -22,7 +22,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const { signIn, user } = useSession()
   const navigate = useNavigate()
   const location = useLocation()
-  if (user) return <Navigate to={destination(user)} replace />
+  if (user) return <Navigate to={safeReturnPath(user, location.state?.from) ?? destination(user)} replace />
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -34,9 +34,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         : await clientService.login(email.trim(), password)
       if (session) {
         signIn(session)
-        const from = location.state?.from
-        const safeReturn = session.user.role === 'client' && session.user.email_verified !== false && !session.user.must_change_password && typeof from === 'string' && /^\/(?!\/)/.test(from) && !from.includes('\\')
-        navigate(safeReturn ? from : destination(session.user), { replace: true })
+        navigate(safeReturnPath(session.user, location.state?.from) ?? destination(session.user), { replace: true })
       } else setSuccess('Registration submitted. Your account may need activation before you can sign in.')
     } catch (cause) {
       setError((cause as Error).message)
