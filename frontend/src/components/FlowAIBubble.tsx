@@ -317,11 +317,15 @@ export function FlowAIBubble() {
       form.append('visibility', visibility)
       await apiUpload('/policies/upload', form)
       setPolicyUploaded(true)
-      setMode('policy')
-      setShowSuggestions(true)
+      if (visibility === 'PUBLIC') {
+        setMode('policy')
+        setShowSuggestions(true)
+      }
       setMessages(m => [
         ...m.filter(x => !(x.role === 'system' && x.content.startsWith('Uploading'))),
-        { role: 'assistant', content: `✓ Policy "${policyTitle}" uploaded. I can now answer questions from it — try one of the suggestions below or ask your own.` },
+        { role: 'assistant', content: visibility === 'PUBLIC'
+          ? `✓ Policy "${policyTitle}" uploaded. I can now answer questions from it — try one of the suggestions below or ask your own.`
+          : `✓ Policy "${policyTitle}" uploaded and stored privately. Flow AI only answers questions from public policies, so I can't answer questions from this one.` },
       ])
     } catch (e) {
       let msg = 'Upload failed.'
