@@ -37,6 +37,7 @@ export async function api<T>(
   options: ApiOptions = {}
 ): Promise<T> {
   const timeout = options.timeout ?? 20000
+  const sentToken = accessToken
   let response: Response
   try {
     response = await fetch(baseUrl + path, {
@@ -64,7 +65,10 @@ export async function api<T>(
       || (typeof data?.detail === 'string' ? data.detail : undefined)
       || (response.status === 422 ? 'Please check the highlighted fields.' : 'This action could not be completed. Refresh and try again.')
     if (response.status === 401) {
-      setAccessToken(null)
+      // Clear only the token that was actually rejected. A late 401 from a
+      // request sent with an older (or no) token must not wipe the token a
+      // newer sign-in has stored in the meantime.
+      if (sentToken && sentToken === accessToken) setAccessToken(null)
     }
     throw new ApiError(message, response.status, fields)
   }

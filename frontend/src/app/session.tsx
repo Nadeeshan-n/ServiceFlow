@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { clientService } from '../lib/client-service'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ActionButton, Modal } from '../components'
-import { setAccessToken } from '../lib/api'
+import { getAccessToken, setAccessToken } from '../lib/api'
 import { demoAccount } from '../lib/demo-account'
 import type { Session, User } from '../types/client'
 
@@ -40,20 +40,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) { setRestoring(false); return }
     let cancelled = false
+    const tokenAtStart = getAccessToken()
     const delays = [0, 1500, 3000]
     ;(async () => {
       for (let attempt = 0; attempt < delays.length; attempt++) {
         if (delays[attempt]) await new Promise(resolve => setTimeout(resolve, delays[attempt]))
         if (cancelled) return
+        // A sign-in or sign-out during the restore owns the session now;
+        // this restore must not overwrite its user or clear its token.
+        if (getAccessToken() !== tokenAtStart) { setRestoring(false); return }
         try {
           const restored = await clientService.me()
           if (cancelled) return
+          if (getAccessToken() !== tokenAtStart) { setRestoring(false); return }
           setUser(restored)
           setRestoring(false)
           return
         } catch (cause) {
           const status = (cause as { status?: number })?.status
-          if (status === 401) setAccessToken(null)
+          if (status === 401 && tokenAtStart && getAccessToken() === tokenAtStart) setAccessToken(null)
           const transient = status === undefined || status === 0 || status >= 500
           if (!transient || attempt === delays.length - 1) { if (!cancelled) setRestoring(false); return }
         }
