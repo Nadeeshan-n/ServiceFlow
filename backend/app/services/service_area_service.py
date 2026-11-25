@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -46,6 +47,44 @@ def create_service_area(
     result = ServiceAreaResponse.model_validate(area) if area is not None else None
     db.commit()
     return result
+
+
+def update_service_area(
+    db: Session, provider_id: int, area_id: int, area_name: str
+) -> ServiceAreaResponse | None:
+    # Lock the provider row so a rename cannot race a simultaneous create
+    # into a duplicate (same guard as create_service_area).
+    db.execute(
+        select(Provider.id).where(Provider.id == provider_id).with_for_update()
+    ).scalar_one()
+
+    area = db.scalar(
+        select(ProviderArea).where(
+            ProviderArea.provider_id == provider_id,
+            ProviderArea.id == area_id,
+        )
+    )
+    if area is None:
+        db.rollback()
+        return None
+
+    duplicate_id = db.scalar(
+        select(ProviderArea.id)
+        .where(
+            ProviderArea.provider_id == provider_id,
+            ProviderArea.id != area_id,
+            func.lower(func.trim(ProviderArea.area_name)) == func.lower(area_name),
+        )
+        .limit(1)
+    )
+    if duplicate_id is not None:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Service area already exists")
+
+    area.area_name = area_name
+    db.commit()
+    db.refresh(area)
+    return ServiceAreaResponse.model_validate(area)
 
 
 def delete_service_area(db: Session, provider_id: int, area_id: int) -> bool:

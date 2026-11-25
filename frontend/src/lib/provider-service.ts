@@ -32,6 +32,8 @@ export const providerService = {
   },
   createServiceArea: (area_name: string) =>
     api<ServiceArea>('/providers/me/service-areas', 'POST', { area_name }),
+  updateServiceArea: (id: number, area_name: string) =>
+    api<ServiceArea>(`/providers/me/service-areas/${id}`, 'PATCH', { area_name }),
   deleteServiceArea: (id: number) =>
     api<void>(`/providers/me/service-areas/${id}`, 'DELETE'),
 

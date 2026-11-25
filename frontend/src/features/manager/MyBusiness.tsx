@@ -156,6 +156,7 @@ function AreasTab() {
   const [name, setName] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState<ServiceArea | null>(null)
   async function add(e: FormEvent) {
     e.preventDefault(); if (pending || !name.trim()) return
     setPending(true); setError('')
@@ -183,11 +184,39 @@ function AreasTab() {
         : <div className="space-y-2">{areas.data?.map((a: ServiceArea) => (
             <SurfaceCard key={a.id} className="flex items-center justify-between p-3">
               <span>{a.area_name}</span>
-              <ActionButton variant="void" size="small" onClick={() => remove(a.id)}>Remove</ActionButton>
+              <div className="flex items-center gap-2">
+                <ActionButton variant="stub" size="small" onClick={() => setEditing(a)}>Edit</ActionButton>
+                <ActionButton variant="void" size="small" onClick={() => remove(a.id)}>Remove</ActionButton>
+              </div>
             </SurfaceCard>
           ))}</div>}
     </Resource>
+    <Modal open={!!editing} title="Rename service area" onClose={() => setEditing(null)}>
+      {editing && <EditArea area={editing} onDone={() => { setEditing(null); areas.reload() }} onCancel={() => setEditing(null)} />}
+    </Modal>
   </>
+}
+
+function EditArea({ area, onDone, onCancel }: {
+  area: ServiceArea; onDone: () => void; onCancel: () => void
+}) {
+  const [name, setName] = useState(area.area_name)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+  async function submit(e: FormEvent) {
+    e.preventDefault(); if (pending || !name.trim()) return
+    setPending(true); setError('')
+    try { await providerService.updateServiceArea(area.id, name.trim()); onDone() }
+    catch (c) { setError((c as Error).message) } finally { setPending(false) }
+  }
+  return <form onSubmit={submit} className="space-y-4">
+    <TextField label="Area name" value={name} onChange={e => setName(e.target.value)} required maxLength={150} placeholder="e.g. Colombo 07" />
+    {error && <Notice error>{error}</Notice>}
+    <div className="flex justify-end gap-2">
+      <ActionButton variant="void" onClick={onCancel}>Cancel</ActionButton>
+      <ActionButton type="submit" variant="stamp" disabled={pending || !name.trim() || name.trim() === area.area_name}>{pending ? 'Saving…' : 'Save'}</ActionButton>
+    </div>
+  </form>
 }
 
 // ---------- Working Hours ----------

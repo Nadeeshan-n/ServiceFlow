@@ -30,6 +30,10 @@ class ServiceAreaCreate(BaseModel):
         return value
 
 
+class ServiceAreaUpdate(ServiceAreaCreate):
+    pass
+
+
 class ServiceAreaResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -10,11 +10,13 @@ from app.schemas.service_area import (
     ServiceAreaCreate,
     ServiceAreasResponse,
     ServiceAreaResponse,
+    ServiceAreaUpdate,
 )
 from app.services.service_area_service import (
     create_service_area,
     delete_service_area,
     list_service_areas,
+    update_service_area,
 )
 
 router = APIRouter(prefix="/me/service-areas")
@@ -53,6 +55,26 @@ def add_my_service_area(
     area = create_service_area(db, provider_id, data.area_name)
     if area is None:
         raise HTTPException(status_code=409, detail="Service area already exists")
+    return area
+
+
+@router.patch(
+    "/{area_id}",
+    response_model=ServiceAreaResponse,
+    responses={
+        404: {"description": "Service area not found"},
+        409: {"description": "Service area already exists"},
+    },
+)
+def update_my_service_area(
+    area_id: Annotated[int, Path(gt=0, le=2_147_483_647)],
+    data: ServiceAreaUpdate,
+    provider_id: ProviderId,
+    db: DatabaseSession,
+):
+    area = update_service_area(db, provider_id, area_id, data.area_name)
+    if area is None:
+        raise HTTPException(status_code=404, detail="Service area not found")
     return area
 
 
