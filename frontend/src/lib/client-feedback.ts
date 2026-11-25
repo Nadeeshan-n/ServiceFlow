@@ -3,7 +3,7 @@ import { demoAccount, requireDemo } from './demo-account'
 import { ApiError, demoMode, liveApiMode, api } from './api'
 
 export type Review = { id: string; client_id: string; company_id: string; job_id: string; author: string; rating: number; comment: string; service_name?: string; reviewed_at?: string }
-export type Dispute = { id: string; client_id: string; record_id: string; kind: 'request' | 'job'; reason: string; description?: string; status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'CLOSED'; created_at: string }
+export type Dispute = { id: string; client_id: string; record_id: string; kind: 'request' | 'job'; reason: string; description?: string; status: 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'CLOSED'; created_at: string; admin_note?: string | null; closed_at?: string | null }
 type ApiRating = { job_id: number; rating: number; review_text?: string | null; reviewed_at: string }
 type ApiProviderReview = { job_id: number; rating: number; review_text?: string | null; reviewed_at: string; client_name: string; service_name: string }
 type ApiDispute = { id: number; job_id: number; opened_by: number; reason: string; description: string; status: string; admin_note?: string | null; created_at: string; closed_at?: string | null }
@@ -12,7 +12,7 @@ const disputes: Dispute[] = []
 const live = () => liveApiMode || !demoMode
 
 function mapDispute(value: ApiDispute): Dispute {
-  return { id: String(value.id), client_id: '', record_id: String(value.job_id), kind: 'job', reason: value.reason, description: value.description, status: value.status as Dispute['status'], created_at: value.created_at }
+  return { id: String(value.id), client_id: '', record_id: String(value.job_id), kind: 'job', reason: value.reason, description: value.description, status: value.status as Dispute['status'], created_at: value.created_at, admin_note: value.admin_note ?? null, closed_at: value.closed_at ?? null }
 }
 
 export const clientFeedback = {

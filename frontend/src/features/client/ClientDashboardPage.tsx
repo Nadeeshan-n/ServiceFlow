@@ -7,6 +7,7 @@ import { DashboardPage } from './DashboardPage'
 import { InvoiceDetailPage, JobDetailPage, QuoteDetailPage, RecordsPage, RequestDetailPage } from './pages'
 import { ProfileSettings } from './ProfileSettings'
 import { NotificationsPage } from './NotificationsPage'
+import { DisputesPage } from './DisputesPage'
 import { NewRequestPage } from '../marketplace/RequestForm'
 
 const tabs = [
@@ -15,6 +16,7 @@ const tabs = [
   { key: 'quotations', label: 'Quotations' },
   { key: 'jobs', label: 'Jobs' },
   { key: 'invoices', label: 'Invoices' },
+  { key: 'disputes', label: 'Disputes' },
   { key: 'notifications', label: 'Notifications' },
   { key: 'profile', label: 'Profile / Settings' },
 ] as const
@@ -58,6 +60,7 @@ export function ClientDashboardPage() {
       {tab === 'quotations' && (record ? <QuoteDetailPage key={record} recordId={record} /> : <RecordsPage kind="quotations" />)}
       {tab === 'jobs' && (record ? <JobDetailPage key={record} recordId={record} /> : <RecordsPage kind="jobs" />)}
       {tab === 'invoices' && (record ? <InvoiceDetailPage key={record} recordId={record} /> : <RecordsPage kind="invoices" />)}
+      {tab === 'disputes' && <DisputesPage />}
       {tab === 'notifications' && <NotificationsPage />}
     </section>
     </Tabs>
