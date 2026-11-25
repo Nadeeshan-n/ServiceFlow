@@ -1,6 +1,6 @@
 from typing import Annotated
 from sqlalchemy.exc import IntegrityError
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -86,6 +86,17 @@ def add_offering(data: OfferingCreate, db: Database, user: CurrentUser):
 @router.patch("/provider/me/services/{id}", response_model=OfferingRead, tags=["Provider services"])
 def edit_offering(id: PositiveId, data: OfferingPatch, db: Database, user: CurrentUser):
     return services.update_offering(db, user, id, data)
+
+
+@router.delete(
+    "/provider/me/services/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    tags=["Provider services"],
+)
+def remove_offering(id: PositiveId, db: Database, user: CurrentUser):
+    services.delete_offering(db, user, id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/admin/services", response_model=list[ServiceRead], tags=["Admin catalogue"])

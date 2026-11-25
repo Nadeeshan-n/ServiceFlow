@@ -40,12 +40,28 @@ function ServicesTab() {
   const catalog = useResource(() => providerService.listCatalogServices())
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<ProviderOffering | null>(null)
+  const [confirming, setConfirming] = useState<ProviderOffering | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+
+  async function remove(id: number) {
+    setError(''); setDeleting(true)
+    try { await providerService.deleteOffering(id); offerings.reload() }
+    catch (c) {
+      // Already gone (e.g. a double submit): the goal is achieved, so just
+      // refresh the list instead of surfacing a "not found" error.
+      if ((c as ApiError).status === 404) offerings.reload()
+      else setError((c as Error).message)
+    }
+    finally { setDeleting(false); setConfirming(null) }
+  }
 
   return <>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-text-secondary">Pick services from the catalog and set your own price.</p>
       <ActionButton variant="stamp" onClick={() => setAdding(true)}>Add service</ActionButton>
     </div>
+    {error && <div className="mb-4"><Notice error>{error}</Notice></div>}
     <Resource {...offerings} retry={offerings.reload}>
       {offerings.data && offerings.data.length === 0
         ? <EmptyState title="No services yet" description="Add a service from the catalog to start receiving requests." />
@@ -62,6 +78,7 @@ function ServicesTab() {
               <div className="flex items-center gap-3">
                 <span className="sf-tabular font-semibold">LKR {Number(o.starting_price).toFixed(2)}</span>
                 <ActionButton variant="stub" size="small" onClick={() => setEditing(o)}>Edit</ActionButton>
+                <ActionButton variant="void" size="small" onClick={() => setConfirming(o)}>Delete</ActionButton>
               </div>
             </SurfaceCard>
           ))}</div>}
@@ -71,6 +88,15 @@ function ServicesTab() {
     </Modal>
     <Modal open={!!editing} title="Edit offering" onClose={() => setEditing(null)}>
       {editing && <EditOffering offering={editing} onDone={() => { setEditing(null); offerings.reload() }} onCancel={() => setEditing(null)} />}
+    </Modal>
+    <Modal open={!!confirming} title="Delete this offering?" onClose={() => setConfirming(null)}>
+      {confirming && <div className="space-y-4">
+        <p className="text-sm">“{confirming.service_name}” will be removed from your services. Existing requests and jobs for this service are not affected, and you can add it again later from the catalog.</p>
+        <div className="flex flex-wrap gap-2">
+          <ActionButton variant="void" onClick={() => remove(confirming.id)} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete offering'}</ActionButton>
+          <ActionButton variant="stub" onClick={() => setConfirming(null)}>Cancel</ActionButton>
+        </div>
+      </div>}
     </Modal>
   </>
 }

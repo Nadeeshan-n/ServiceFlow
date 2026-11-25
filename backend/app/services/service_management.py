@@ -171,6 +171,20 @@ def update_offering(
     return _offering_result(offer, service)
 
 
+def delete_offering(db: Session, user: User, offering_id: int) -> None:
+    provider_id = _approved_provider(db, user, lock=True)
+    offer = db.scalar(
+        select(ProviderService).where(
+            ProviderService.id == offering_id,
+            ProviderService.provider_id == provider_id,
+        )
+    )
+    if offer is None:
+        raise HTTPException(404, "Offering not found")
+    db.delete(offer)
+    _commit(db)
+
+
 def _directory_query(service_id: int | None = None):
     price_query = (
         select(

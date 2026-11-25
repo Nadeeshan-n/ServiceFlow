@@ -24,6 +24,8 @@ export const providerService = {
     api<ProviderOffering>('/provider/me/services', 'POST', body),
   updateOffering: (id: number, body: { starting_price?: number; description?: string; is_active?: boolean }) =>
     api<ProviderOffering>(`/provider/me/services/${id}`, 'PATCH', body),
+  deleteOffering: (id: number) =>
+    api<void>(`/provider/me/services/${id}`, 'DELETE'),
 
   // ---- Service areas ----
   listServiceAreas: async (): Promise<ServiceArea[]> => {
